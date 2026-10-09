@@ -1,0 +1,48 @@
+# Starts the whole application: database, API and web frontend.
+#   docker compose up            -> http://localhost:3000
+# Development (hot reload): run only the database and start the API and Vite locally.
+#   docker compose up db
+name: meal-planner
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: mealplanner
+      POSTGRES_USER: mealplanner
+      POSTGRES_PASSWORD: mealplanner
+    ports:
+      - "5432:5432"
+    volumes:
+      # Named volume: the family's data survives `docker compose down` and restarts.
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mealplanner -d mealplanner"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+    restart: unless-stopped
+
+  api:
+    build: ./api
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/mealplanner
+      DB_USER: mealplanner
+      DB_PASSWORD: mealplanner
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build: ./web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+volumes:
+  pgdata:

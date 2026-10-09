@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+/*
+ * "Healthy lifestyle" palette: vivid orange on butter cream, avocado green for what is good
+ * (fit, at home, confirmed), coral like the avocado's stone for lunchboxes and warnings.
+ */
+@theme {
+  --color-cream-50: #fffdf0;
+  --color-cream-100: #fff9d6;
+  --color-cream-200: #fdf1b0;
+  --color-cream-300: #f6e48a;
+
+  --color-brand-50: #fff3e8;
+  --color-brand-100: #ffe2c9;
+  --color-brand-200: #ffc597;
+  --color-brand-300: #ffa25e;
+  --color-brand-500: #ff7426;
+  --color-brand-600: #ff5a0a;
+  --color-brand-700: #e04a00;
+  --color-brand-800: #b33c00;
+  --color-brand-900: #8a2f00;
+
+  --color-avocado-50: #f4f8e8;
+  --color-avocado-100: #e5efc8;
+  --color-avocado-200: #cddf98;
+  --color-avocado-300: #b3cc68;
+  --color-avocado-500: #8fae3c;
+  --color-avocado-600: #75932c;
+  --color-avocado-700: #5c7423;
+  --color-avocado-800: #485b1e;
+
+  --color-terracotta-50: #fff1ec;
+  --color-terracotta-100: #ffded3;
+  --color-terracotta-200: #ffbfa9;
+  --color-terracotta-500: #f2603f;
+  --color-terracotta-600: #e04a2c;
+  --color-terracotta-700: #b83a22;
+  --color-terracotta-800: #8f2f1f;
+
+  --font-sans: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Lilita One", "Segoe UI Black", system-ui, sans-serif;
+}
+
+body {
+  @apply bg-cream-100 text-stone-900 antialiased;
+  min-width: 1280px;
+}
+
+/* Page titles: chunky, upper-case, orange — like the poster. Print sheets live outside #root. */
+#root h1 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--color-brand-600);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+
+#root h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--color-brand-800);
+  letter-spacing: 0.01em;
+}
+
+/*
+ * Printing. The "Imprimeix" button renders a dedicated sheet (.print-sheet) next to the app and
+ * prints only that sheet; it is laid out off-screen first so it can be measured and fitted to one
+ * page. Printing with Ctrl+P without the button prints the current screen without the header.
+ */
+.print-sheet {
+  position: absolute;
+  top: 0;
+  left: -10000px;
+  background: white;
+  color: black;
+}
+
+@media print {
+  @page {
+    margin: 10mm;
+  }
+  body {
+    min-width: 0;
+    background: white;
+  }
+  body.printing #root {
+    display: none;
+  }
+  body.printing .print-sheet {
+    position: static;
+  }
+  * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}
