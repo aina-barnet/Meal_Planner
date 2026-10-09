@@ -4,6 +4,15 @@ Plans a family's week of lunches and dinners — including the ones that go to w
 
 ![Menu board: a generated week with lunchbox badges and kcal fit per meal](docs/menu-board.png)
 
+## Start and stop with a double click (Windows)
+
+For people who don't use a terminal. Docker Desktop must be installed once.
+
+- **`Engegar.bat`** — starts Docker Desktop if needed, starts the app and opens it in the browser. The first time takes a few minutes because it builds the app.
+- **`Aturar.bat`** — stops the app. The data is kept for the next time.
+
+Tip: right-click each file → *Send to* → *Desktop (create shortcut)* to have them on the desktop.
+
 ## Quick start
 
 ```sh
