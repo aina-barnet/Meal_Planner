@@ -16,9 +16,8 @@ echo.
 
 where docker >nul 2>&1
 if errorlevel 1 (
-    echo   No s'ha trobat Docker Desktop en aquest ordinador.
-    echo   Cal instal·lar-lo un sol cop. S'obrirà la pàgina de descàrrega.
-    start "" "https://www.docker.com/products/docker-desktop/"
+    echo   Aquest ordinador encara no està preparat.
+    echo   Fes doble clic a Instal·lar.bat, reinicia l'ordinador i torna a provar-ho.
     goto :fail
 )
 
@@ -40,6 +39,7 @@ if errorlevel 1 (
     echo   Docker Desktop no ha arrencat a temps.
     echo   Mira la finestra de Docker Desktop: potser demana alguna cosa.
     echo   Quan digui que està en marxa, torna a fer doble clic a Engegar.bat
+    echo   Si és la primera vegada en aquest ordinador, executa abans Instal·lar.bat
     goto :fail
 )
 

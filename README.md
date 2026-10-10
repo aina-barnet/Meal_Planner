@@ -6,8 +6,9 @@ Plans a family's week of lunches and dinners — including the ones that go to w
 
 ## Start and stop with a double click (Windows)
 
-For people who don't use a terminal. Docker Desktop must be installed once.
+For people who don't use a terminal.
 
+- **`Instal·lar.bat`** — run once per computer. Enables WSL 2 / Virtual Machine Platform, installs Docker Desktop with winget, and checks that CPU virtualization is on. Asks for administrator rights and usually a restart.
 - **`Engegar.bat`** — starts Docker Desktop if needed, starts the app and opens it in the browser. The first time takes a few minutes because it builds the app.
 - **`Aturar.bat`** — stops the app. The data is kept for the next time.
 
