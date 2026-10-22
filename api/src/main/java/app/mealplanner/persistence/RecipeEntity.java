@@ -1,9 +1,6 @@
 package app.mealplanner.persistence;
 
-import app.mealplanner.domain.catalogue.Cuisine;
-import app.mealplanner.domain.catalogue.LunchboxServing;
 import app.mealplanner.domain.catalogue.ProteinType;
-import app.mealplanner.domain.catalogue.Season;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -11,8 +8,6 @@ import jakarta.persistence.Convert;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Embeddable;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -21,9 +16,7 @@ import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 
 /**
  * A recipe: seeded by migrations or added by the family ({@code custom}). Any recipe can be
@@ -41,8 +34,6 @@ public class RecipeEntity {
 
 	private String name;
 
-	private String description;
-
 	@Column(name = "base_servings")
 	private int baseServings;
 
@@ -53,24 +44,11 @@ public class RecipeEntity {
 	@Column(name = "protein_type")
 	private ProteinType proteinType;
 
-	@Enumerated(EnumType.STRING)
-	private Cuisine cuisine;
-
 	private boolean portable;
-
-	@Enumerated(EnumType.STRING)
-	@Column(name = "lunchbox_serving")
-	private LunchboxServing lunchboxServing;
 
 	private boolean custom;
 
 	private boolean hidden;
-
-	@ElementCollection
-	@CollectionTable(name = "recipe_season", joinColumns = @JoinColumn(name = "recipe_id"))
-	@Column(name = "season")
-	@Enumerated(EnumType.STRING)
-	private Set<Season> seasons = EnumSet.noneOf(Season.class);
 
 	@ElementCollection
 	@CollectionTable(name = "recipe_step", joinColumns = @JoinColumn(name = "recipe_id"))
@@ -108,14 +86,6 @@ public class RecipeEntity {
 		this.name = name;
 	}
 
-	public String getDescription() {
-		return description;
-	}
-
-	public void setDescription(String description) {
-		this.description = description;
-	}
-
 	public int getBaseServings() {
 		return baseServings;
 	}
@@ -140,26 +110,12 @@ public class RecipeEntity {
 		this.proteinType = proteinType;
 	}
 
-	public Cuisine getCuisine() {
-		return cuisine;
-	}
-
-	public void setCuisine(Cuisine cuisine) {
-		this.cuisine = cuisine;
-	}
-
 	public boolean isPortable() {
 		return portable;
 	}
 
-	public LunchboxServing getLunchboxServing() {
-		return lunchboxServing;
-	}
-
-	/** @param lunchboxServing required exactly when portable */
-	public void setLunchbox(boolean portable, LunchboxServing lunchboxServing) {
+	public void setPortable(boolean portable) {
 		this.portable = portable;
-		this.lunchboxServing = portable ? lunchboxServing : null;
 	}
 
 	public boolean isCustom() {
@@ -172,10 +128,6 @@ public class RecipeEntity {
 
 	public void setHidden(boolean hidden) {
 		this.hidden = hidden;
-	}
-
-	public Set<Season> getSeasons() {
-		return seasons;
 	}
 
 	public List<Step> getSteps() {

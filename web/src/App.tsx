@@ -4,11 +4,9 @@ import { useFontScale } from './fontScale'
 import { formatWeekRange } from './labels'
 import { type Route, href, navigate, useRoute } from './router'
 import { MenuBoard } from './screens/MenuBoard'
-import { PantryScreen } from './screens/PantryScreen'
 import { RecipeEditor } from './screens/RecipeEditor'
 import { RecipeList } from './screens/RecipeList'
 import { SetupWizard } from './screens/SetupWizard'
-import { ShoppingListScreen } from './screens/ShoppingListScreen'
 import { WeekConfig } from './screens/WeekConfig'
 import { WeekList } from './screens/WeekList'
 import { Spinner } from './ui'
@@ -42,16 +40,12 @@ function Screen({ route }: { route: Route }) {
       return <WeekList />
     case 'week':
       return <WeekConfig weekId={route.weekId} />
-    case 'pantry':
-      return <PantryScreen />
     case 'recipes':
       return <RecipeList />
     case 'recipe':
       return <RecipeEditor key={route.recipeId ?? 'nou'} recipeId={route.recipeId} />
     case 'menu':
       return <MenuBoard weekId={route.weekId} />
-    case 'shopping':
-      return <ShoppingListScreen weekId={route.weekId} />
   }
 }
 
@@ -90,14 +84,12 @@ function Header({ route, householdName }: { route: Route | null; householdName?:
           {tab({ screen: 'household' }, 'Llar')}
           {tab({ screen: 'weeks' }, 'Setmanes')}
           {tab({ screen: 'recipes' }, 'Plats')}
-          {tab({ screen: 'pantry' }, 'Rebost')}
         </nav>
         {weekId !== null && (
           <nav className="ml-auto flex items-center gap-1 rounded-2xl bg-white p-1 ring-1 ring-brand-100">
             <span className="px-2 text-sm text-stone-500">{week.data ? formatWeekRange(week.data.weekStart) : '…'}</span>
             {tab({ screen: 'week', weekId }, 'Configuració')}
             {tab({ screen: 'menu', weekId }, 'Menú')}
-            {tab({ screen: 'shopping', weekId }, 'Compra')}
           </nav>
         )}
         <FontSizeControl className={weekId === null ? 'ml-auto' : ''} />

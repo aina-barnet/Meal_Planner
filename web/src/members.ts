@@ -4,9 +4,7 @@ export function emptyMember(): MemberInput {
   return {
     name: '',
     dietType: 'OMNIVORE',
-    dietNotes: null,
     allergens: [],
-    dislikedIngredientIds: [],
   }
 }
 

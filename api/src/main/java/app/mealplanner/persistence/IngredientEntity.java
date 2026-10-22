@@ -1,6 +1,5 @@
 package app.mealplanner.persistence;
 
-import app.mealplanner.domain.catalogue.Aisle;
 import app.mealplanner.domain.catalogue.Allergen;
 import app.mealplanner.domain.catalogue.CanonicalUnit;
 import app.mealplanner.domain.catalogue.IngredientCategory;
@@ -44,15 +43,6 @@ public class IngredientEntity {
 	@Enumerated(EnumType.STRING)
 	@Column(name = "canonical_unit")
 	private CanonicalUnit canonicalUnit;
-
-	@Column(name = "package_size")
-	private BigDecimal packageSize;
-
-	@Enumerated(EnumType.STRING)
-	private Aisle aisle;
-
-	@Column(name = "pantry_staple")
-	private boolean pantryStaple;
 
 	private boolean custom;
 
@@ -110,30 +100,6 @@ public class IngredientEntity {
 
 	public void setCanonicalUnit(CanonicalUnit canonicalUnit) {
 		this.canonicalUnit = canonicalUnit;
-	}
-
-	public BigDecimal getPackageSize() {
-		return packageSize;
-	}
-
-	public void setPackageSize(BigDecimal packageSize) {
-		this.packageSize = packageSize;
-	}
-
-	public Aisle getAisle() {
-		return aisle;
-	}
-
-	public void setAisle(Aisle aisle) {
-		this.aisle = aisle;
-	}
-
-	public boolean isPantryStaple() {
-		return pantryStaple;
-	}
-
-	public void setPantryStaple(boolean pantryStaple) {
-		this.pantryStaple = pantryStaple;
 	}
 
 	public boolean isCustom() {

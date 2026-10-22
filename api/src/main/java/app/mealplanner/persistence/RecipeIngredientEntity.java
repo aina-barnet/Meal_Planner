@@ -1,8 +1,6 @@
 package app.mealplanner.persistence;
 
-import app.mealplanner.domain.catalogue.ScalingMode;
 import app.mealplanner.domain.catalogue.Unit;
-import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -38,10 +36,6 @@ public class RecipeIngredientEntity {
 	@Enumerated(EnumType.STRING)
 	private Unit unit;
 
-	@Enumerated(EnumType.STRING)
-	@Column(name = "scaling_mode")
-	private ScalingMode scalingMode;
-
 	protected RecipeIngredientEntity() {
 	}
 
@@ -70,14 +64,9 @@ public class RecipeIngredientEntity {
 		return unit;
 	}
 
-	public ScalingMode getScalingMode() {
-		return scalingMode;
-	}
-
-	public void set(IngredientEntity ingredient, BigDecimal quantity, Unit unit, ScalingMode scalingMode) {
+	public void set(IngredientEntity ingredient, BigDecimal quantity, Unit unit) {
 		this.ingredient = ingredient;
 		this.quantity = quantity;
 		this.unit = unit;
-		this.scalingMode = scalingMode;
 	}
 }

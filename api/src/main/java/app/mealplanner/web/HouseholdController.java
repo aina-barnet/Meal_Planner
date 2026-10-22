@@ -13,7 +13,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -90,7 +89,6 @@ public class HouseholdController {
 				allergens.put(entry.allergen(), entry.kind());
 			}
 		}
-		return new MemberData(r.name(), r.dietType(), r.dietNotes(), allergens,
-				r.dislikedIngredientIds() == null ? new HashSet<>() : new HashSet<>(r.dislikedIngredientIds()));
+		return new MemberData(r.name(), r.dietType(), allergens);
 	}
 }

@@ -1,15 +1,10 @@
 package app.mealplanner.application;
 
-import app.mealplanner.domain.catalogue.Aisle;
 import app.mealplanner.domain.catalogue.Allergen;
 import app.mealplanner.domain.catalogue.CanonicalUnit;
-import app.mealplanner.domain.catalogue.Cuisine;
 import app.mealplanner.domain.catalogue.Ingredient;
 import app.mealplanner.domain.catalogue.IngredientCategory;
-import app.mealplanner.domain.catalogue.LunchboxServing;
 import app.mealplanner.domain.catalogue.ProteinType;
-import app.mealplanner.domain.catalogue.ScalingMode;
-import app.mealplanner.domain.catalogue.Season;
 import app.mealplanner.domain.catalogue.Unit;
 import app.mealplanner.domain.catalogue.UnitConverter;
 import app.mealplanner.persistence.IngredientEntity;
@@ -57,26 +52,19 @@ public class CatalogueEditor {
 			String name,
 			IngredientCategory category,
 			CanonicalUnit canonicalUnit,
-			BigDecimal packageSize,
-			Aisle aisle,
 			Set<Allergen> allergens,
-			Map<Unit, BigDecimal> conversions,
-			boolean pantryStaple) {
+			Map<Unit, BigDecimal> conversions) {
 	}
 
-	public record LineData(long ingredientId, BigDecimal quantity, Unit unit, ScalingMode scalingMode) {
+	public record LineData(long ingredientId, BigDecimal quantity, Unit unit) {
 	}
 
 	public record RecipeData(
 			String name,
-			String description,
 			int baseServings,
 			int prepMinutes,
 			ProteinType proteinType,
-			Cuisine cuisine,
-			Set<Season> seasons,
 			boolean portable,
-			LunchboxServing lunchboxServing,
 			List<LineData> lines,
 			List<String> steps) {
 	}
@@ -150,9 +138,6 @@ public class CatalogueEditor {
 		entity.setName(data.name().strip());
 		entity.setCategory(data.category());
 		entity.setCanonicalUnit(data.canonicalUnit());
-		entity.setPackageSize(data.packageSize());
-		entity.setAisle(data.aisle());
-		entity.setPantryStaple(data.pantryStaple());
 		entity.getAllergens().clear();
 		entity.getAllergens().addAll(data.allergens());
 		entity.getConversions().clear();
@@ -160,10 +145,6 @@ public class CatalogueEditor {
 	}
 
 	private void apply(RecipeEntity entity, RecipeData data) {
-		if (data.portable() && data.lunchboxServing() == null) {
-			throw new Errors.RuleViolation("LUNCHBOX_SERVING_REQUIRED",
-					"Si el plat es pot endur, indiqueu si es menja fred o cal escalfar-lo.", List.of());
-		}
 		if (!proteins.existsById(data.proteinType().code())) {
 			throw new Errors.RuleViolation("UNKNOWN_PROTEIN", "No existeix el tipus de proteïna «"
 					+ data.proteinType().code() + "».", List.of());
@@ -189,14 +170,10 @@ public class CatalogueEditor {
 		}
 
 		entity.setName(data.name().strip());
-		entity.setDescription(data.description() == null || data.description().isBlank() ? null : data.description().strip());
 		entity.setBaseServings(data.baseServings());
 		entity.setPrepMinutes(data.prepMinutes());
 		entity.setProteinType(data.proteinType());
-		entity.setCuisine(data.cuisine());
-		entity.setLunchbox(data.portable(), data.lunchboxServing());
-		entity.getSeasons().clear();
-		entity.getSeasons().addAll(data.seasons());
+		entity.setPortable(data.portable());
 		entity.getSteps().clear();
 		for (int i = 0; i < data.steps().size(); i++) {
 			entity.getSteps().add(new RecipeEntity.Step(i + 1, data.steps().get(i).strip()));
@@ -214,7 +191,7 @@ public class CatalogueEditor {
 				row = new RecipeIngredientEntity(entity, i + 1);
 				lines.add(row);
 			}
-			row.set(ingredients.getReferenceById(line.ingredientId()), line.quantity(), line.unit(), line.scalingMode());
+			row.set(ingredients.getReferenceById(line.ingredientId()), line.quantity(), line.unit());
 		}
 		while (lines.size() > data.lines().size()) {
 			lines.removeLast();
@@ -224,10 +201,9 @@ public class CatalogueEditor {
 	/** Recipe lines that the new ingredient data would make impossible to convert. */
 	private List<String> linesBrokenBy(long ingredientId, IngredientData data) {
 		Ingredient changed = new Ingredient(ingredientId, data.name(), data.category(), data.canonicalUnit(),
-				data.packageSize(), data.aisle(), data.allergens(), data.conversions().entrySet().stream()
+				data.allergens(), data.conversions().entrySet().stream()
 						.filter(e -> !e.getKey().isMetric())
-						.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
-				data.pantryStaple());
+						.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)));
 		return catalogue.allRecipes().stream()
 				.flatMap(view -> view.recipe().ingredients().stream()
 						.filter(line -> line.ingredient().id() == ingredientId)

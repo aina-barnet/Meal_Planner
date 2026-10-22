@@ -1,6 +1,6 @@
 # Planificador d'àpats — Weekly Family Meal Planner
 
-Plans a family's week of lunches and dinners — including the ones that go to work in a lunchbox — and turns it into an aggregated shopping list, entirely on your own computer.
+Plans a family's weekday lunches and dinners, Monday to Friday — including the ones that go to work in a lunchbox — entirely on your own computer.
 
 ![Menu board: a generated week with lunchbox badges](docs/menu-board.png)
 
@@ -59,10 +59,10 @@ cd web && npm run lint && npm run build
 
 ## What it does
 
-1. **Setup wizard** — the household and its members: diet, allergies and intolerances, and dislikes.
-2. **Week configuration** — which lunches and dinners to plan and, for each one, who eats at home and who takes a lunchbox.
-3. **Menu board** — a generated, balanced week that can be rearranged by dragging dishes, replaced from a filtered picker, or locked before regenerating. Dishes that do not survive a lunchbox are never placed in a meal with lunchbox diners, and the API rejects such assignments too.
-4. **Shopping list** — scaled, converted and aggregated across the week, minus the pantry, rounded up to whole packages and grouped by aisle, with a print stylesheet. Leftovers of each package go back into the pantry for the following week.
+1. **Setup wizard** — the household and its members: name, diet, allergies and intolerances.
+2. **Week configuration** — which weekday lunches and dinners to plan and, for each one, who eats at home and who takes a lunchbox.
+3. **Menu board** — a generated, balanced week that can be rearranged by dragging dishes, replaced from a filtered picker, or locked before regenerating. Dishes that do not survive a lunchbox are never placed in a meal with lunchbox diners, and the API rejects such assignments too. Once every meal has a dish the week can be confirmed. The menu prints as a one-page grid with who eats at home, who takes a lunchbox and who is away, and each dish on the board has a print icon for its recipe sheet.
+4. **Dishes** — the recipe catalogue: name, servings, time, main protein, whether it also works in a lunchbox, ingredients and steps; the family can add their own dishes and ingredients, and hide the ones they don't want proposed.
 
 ## Architecture
 
@@ -72,7 +72,7 @@ cd web && npm run lint && npm run build
 /docs  Design notes and decision log
 ```
 
-All domain logic (portion scaling, unit conversion, ingredient aggregation, purchase rounding and the menu generator) lives in plain Java classes under `app.mealplanner.domain`, with no Spring or JPA. They take data in and return data out, and are unit-tested without a Spring context or a database; `DomainPurityTest` fails the build if a domain class imports Spring, JPA or the application layers. Controllers, services and repositories (`web`, `application`, `persistence`) are a thin layer that maps HTTP and persistence onto that domain.
+All domain logic (assignment rules, unit conversion, recipe facts such as allergens and diets, and the menu generator) lives in plain Java classes under `app.mealplanner.domain`, with no Spring or JPA. They take data in and return data out, and are unit-tested without a Spring context or a database; `DomainPurityTest` fails the build if a domain class imports Spring, JPA or the application layers. Controllers, services and repositories (`web`, `application`, `persistence`) are a thin layer that maps HTTP and persistence onto that domain.
 
 The menu generator (`domain.generator.MenuGenerator`) is rules plus scoring: hard constraints filter the catalogue per meal (lunchbox, allergies, diet), survivors are scored on protein rotation, variety and recency, and one of the top five is drawn at random. The scoring is explained at the top of the class.
 

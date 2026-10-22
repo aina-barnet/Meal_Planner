@@ -39,15 +39,12 @@ import java.util.stream.Collectors;
  *   <li><b>protein rotation (40 %)</b>: how long ago the same protein source (fish, legumes,
  *       poultry…) was last served in the previous two days. Never in that window: 1. Two days
  *       ago: 0.6. Yesterday: 0.2. Earlier the same day: 0.</li>
- *   <li><b>variety (30 %)</b>: 60 % for the share of the recipe's vegetables not yet used this
- *       week (0.5 for recipes without vegetables), 40 % for cuisine: 1 minus the share of the
- *       last three meals with the same cuisine.</li>
+ *   <li><b>variety (30 %)</b>: the share of the recipe's vegetables not yet used this week
+ *       (0.5 for recipes without vegetables).</li>
  *   <li><b>recency (30 %)</b>: 0 if the dish is already on this week's menu. Otherwise it grows
  *       linearly with the days since it was last planned in a previous week, reaching 1 at 28
  *       days, or if it has never been planned.</li>
  * </ul>
- * Each diner who dislikes one of the recipe's ingredients subtracts 0.15. Dislikes are soft, so
- * the recipe stays eligible.
  *
  * <p><b>3. Choice.</b> Dishes already on this week's menu are set aside while any other candidate
  * remains, so a week only repeats a dish when the constraints leave nothing else. Of the rest,
@@ -61,7 +58,6 @@ public final class MenuGenerator {
 	static final double WEIGHT_PROTEIN = 0.40;
 	static final double WEIGHT_VARIETY = 0.30;
 	static final double WEIGHT_RECENCY = 0.30;
-	static final double DISLIKE_PENALTY = 0.15;
 	static final int TOP_CANDIDATES = 5;
 	public static final int RECENCY_DAYS = 28;
 
@@ -148,9 +144,9 @@ public final class MenuGenerator {
 
 	double score(Recipe recipe, Slot slot, Week week) {
 		double score = WEIGHT_PROTEIN * proteinRotation(recipe, slot, week)
-				+ WEIGHT_VARIETY * variety(recipe, slot, week)
+				+ WEIGHT_VARIETY * variety(recipe, week)
 				+ WEIGHT_RECENCY * recency(recipe, slot, week);
-		return score - DISLIKE_PENALTY * dislikers(recipe, slot);
+		return score;
 	}
 
 	double proteinRotation(Recipe recipe, Slot slot, Week week) {
@@ -173,25 +169,15 @@ public final class MenuGenerator {
 		return 1;
 	}
 
-	double variety(Recipe recipe, Slot slot, Week week) {
+	double variety(Recipe recipe, Week week) {
 		Set<Long> recipeVegetables = vegetables.getOrDefault(recipe.id(), Set.of());
-		double vegetableScore;
 		if (recipeVegetables.isEmpty()) {
-			vegetableScore = 0.5;
-		} else {
-			Set<Long> used = new HashSet<>();
-			week.decided.forEach(d -> used.addAll(vegetables.getOrDefault(d.recipe().id(), Set.of())));
-			long fresh = recipeVegetables.stream().filter(v -> !used.contains(v)).count();
-			vegetableScore = (double) fresh / recipeVegetables.size();
+			return 0.5;
 		}
-		List<Decided> previous = week.decided.stream()
-				.filter(d -> d.slot().before(slot))
-				.sorted(Comparator.comparing((Decided d) -> d.slot().date()).thenComparingInt(d -> d.slot().order()))
-				.toList();
-		List<Decided> lastThree = previous.subList(Math.max(0, previous.size() - 3), previous.size());
-		long sameCuisine = lastThree.stream().filter(d -> d.recipe().cuisine() == recipe.cuisine()).count();
-		double cuisineScore = 1 - sameCuisine / 3.0;
-		return 0.6 * vegetableScore + 0.4 * cuisineScore;
+		Set<Long> used = new HashSet<>();
+		week.decided.forEach(d -> used.addAll(vegetables.getOrDefault(d.recipe().id(), Set.of())));
+		long fresh = recipeVegetables.stream().filter(v -> !used.contains(v)).count();
+		return (double) fresh / recipeVegetables.size();
 	}
 
 	double recency(Recipe recipe, Slot slot, Week week) {
@@ -204,15 +190,6 @@ public final class MenuGenerator {
 		}
 		long days = ChronoUnit.DAYS.between(lastUse, slot.date());
 		return Math.max(0, Math.min(1, (double) days / RECENCY_DAYS));
-	}
-
-	private static long dislikers(Recipe recipe, Slot slot) {
-		Set<Long> ingredients = recipe.ingredients().stream()
-				.map(line -> line.ingredient().id())
-				.collect(Collectors.toSet());
-		return slot.diners().stream()
-				.filter(diner -> diner.dislikedIngredients().stream().anyMatch(ingredients::contains))
-				.count();
 	}
 
 	// ------------------------------------------------------------------ choice

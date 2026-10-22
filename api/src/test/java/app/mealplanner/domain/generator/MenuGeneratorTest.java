@@ -2,19 +2,14 @@ package app.mealplanner.domain.generator;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import app.mealplanner.domain.catalogue.Aisle;
 import app.mealplanner.domain.catalogue.Allergen;
 import app.mealplanner.domain.catalogue.CanonicalUnit;
-import app.mealplanner.domain.catalogue.Cuisine;
 import app.mealplanner.domain.catalogue.DietType;
 import app.mealplanner.domain.catalogue.Ingredient;
 import app.mealplanner.domain.catalogue.IngredientCategory;
-import app.mealplanner.domain.catalogue.LunchboxServing;
 import app.mealplanner.domain.catalogue.ProteinType;
 import app.mealplanner.domain.catalogue.Recipe;
 import app.mealplanner.domain.catalogue.RecipeIngredient;
-import app.mealplanner.domain.catalogue.ScalingMode;
-import app.mealplanner.domain.catalogue.Season;
 import app.mealplanner.domain.catalogue.Unit;
 import app.mealplanner.domain.generator.MenuGenerator.PastUse;
 import app.mealplanner.domain.generator.MenuGenerator.Result;
@@ -162,22 +157,6 @@ class MenuGeneratorTest {
 	}
 
 	@Test
-	void penalisesDislikesWithoutExcludingTheDish() {
-		Recipe chicken = recipe(20, "Pollastre", ProteinType.POULTRY, true, CHICKEN);
-		Diner dislikesChicken = new Diner(9, "Nil", DinerLocation.HOME, DietType.OMNIVORE, Set.of(), Set.of(CHICKEN.id()));
-		MenuGenerator generator = new MenuGenerator(List.of(chicken), new Random(0));
-		var week = new MenuGenerator.Week(List.of());
-
-		double liked = generator.score(chicken, slot(1, MONDAY, 0, List.of(ANNA_HOME)), week);
-		double disliked = generator.score(chicken, slot(1, MONDAY, 0, List.of(dislikesChicken)), week);
-
-		assertThat(liked - disliked).isCloseTo(MenuGenerator.DISLIKE_PENALTY, offset());
-		assertThat(new MenuGenerator(List.of(chicken), new Random(0))
-				.generate(List.of(slot(1, MONDAY, 0, List.of(dislikesChicken))), List.of()))
-				.singleElement().isInstanceOf(Result.Assigned.class);
-	}
-
-	@Test
 	void sameSeedSameWeekDifferentSeedsDifferentWeeks() {
 		List<Slot> week = fullWeek(List.of(ANNA_HOME, PAU_HOME), List.of(ANNA_HOME, PAU_HOME));
 		List<Recipe> catalogue = mixedCatalogue();
@@ -219,19 +198,17 @@ class MenuGeneratorTest {
 	}
 
 	private static Diner diner(long id, String name, DinerLocation location, DietType diet, Set<Allergen> allergens) {
-		return new Diner(id, name, location, diet, allergens, Set.of());
+		return new Diner(id, name, location, diet, allergens);
 	}
 
 	private static Ingredient ingredient(long id, String name, IngredientCategory category, Set<Allergen> allergens) {
-		return new Ingredient(id, name, category, CanonicalUnit.G, BigDecimal.valueOf(1000), Aisle.PANTRY,
-				allergens, Map.of(), false);
+		return new Ingredient(id, name, category, CanonicalUnit.G, allergens, Map.of());
 	}
 
 	/** A recipe for 1 serving with its protein as the only ingredient. */
 	private static Recipe recipe(long id, String name, ProteinType type, boolean portable, Ingredient protein) {
-		return new Recipe(id, name, 1, 30, type, Cuisine.values()[(int) (id % Cuisine.values().length)],
-				Set.of(Season.AUTUMN), portable, portable ? LunchboxServing.REHEAT : null,
-				List.of(new RecipeIngredient(protein, BigDecimal.valueOf(150), Unit.G, ScalingMode.LINEAR)));
+		return new Recipe(id, name, 1, 30, type, portable,
+				List.of(new RecipeIngredient(protein, BigDecimal.valueOf(150), Unit.G)));
 	}
 
 	private static List<Long> dishes(List<Result> results) {

@@ -1,14 +1,10 @@
 import type {
   IngredientCategory,
-  ScalingMode,
   Unit,
-  Aisle,
   Allergen,
   AllergenKind,
-  Cuisine,
   DietType,
   MealSlot,
-  Season,
 } from './api/types'
 
 export const DIET: Record<DietType, string> = {
@@ -42,17 +38,6 @@ export const ALLERGEN_KIND: Record<AllergenKind, string> = {
 
 export const SLOT: Record<MealSlot, string> = { LUNCH: 'Dinar', DINNER: 'Sopar' }
 
-export const CUISINE: Record<Cuisine, string> = {
-  CATALAN: 'Catalana',
-  SPANISH: 'Espanyola',
-  ITALIAN: 'Italiana',
-  GREEK: 'Grega',
-  MOROCCAN: 'Marroquina',
-  LEVANTINE: 'Llevantina',
-  FRENCH: 'Francesa',
-  OTHER: 'Altres',
-}
-
 export const UNIT: Record<Unit, string> = {
   G: 'g',
   KG: 'kg',
@@ -74,12 +59,6 @@ export const UNIT: Record<Unit, string> = {
 /** Units that mean something different per ingredient (1 egg = 60 g) and need a conversion. */
 export const COUNTABLE_UNITS: Unit[] = ['UNIT', 'TBSP', 'TSP', 'CLOVE', 'PINCH', 'SLICE', 'BUNCH', 'SPRIG', 'CAN', 'CUP']
 
-export const SCALING: Record<ScalingMode, { label: string; hint: string }> = {
-  LINEAR: { label: 'Proporcional', hint: 'Augmenta amb les racions' },
-  FIXED: { label: 'Fixa', hint: 'Sempre igual (llorer, un pessic de sal)' },
-  SUBLINEAR: { label: 'Moderada', hint: 'Augmenta a mig ritme (oli de fregir)' },
-}
-
 export const CATEGORY: Record<IngredientCategory, string> = {
   VEGETABLE: 'Verdura',
   FRUIT: 'Fruita',
@@ -96,26 +75,6 @@ export const CATEGORY: Record<IngredientCategory, string> = {
   SEAFOOD: 'Marisc',
   MEAT: 'Carn',
   OTHER: 'Altres',
-}
-
-export const SEASON: Record<Season, string> = {
-  SPRING: 'Primavera',
-  SUMMER: 'Estiu',
-  AUTUMN: 'Tardor',
-  WINTER: 'Hivern',
-}
-
-export const AISLE: Record<Aisle, string> = {
-  PRODUCE: 'Fruita i verdura',
-  BAKERY: 'Fleca',
-  BUTCHER: 'Carnisseria',
-  FISHMONGER: 'Peixateria',
-  DAIRY_EGGS: 'Làctics i ous',
-  PANTRY: 'Rebost',
-  CANNED: 'Conserves',
-  SPICES: 'Espècies',
-  DRINKS: 'Begudes',
-  FROZEN: 'Congelats',
 }
 
 const WEEKDAY = new Intl.DateTimeFormat('ca', { weekday: 'long' })
@@ -145,8 +104,11 @@ export const formatWeekdayShort = (iso: string) => capitalise(WEEKDAY_SHORT.form
 export const formatDayMonth = (iso: string) => DAY_MONTH.format(parseDate(iso))
 export const formatNumber = (n: number) => NUMBER.format(n)
 
+/** Monday to Friday: weekends are not planned. */
+export const WEEK_DAYS = 5
+
 export function formatWeekRange(weekStart: string): string {
-  const end = addDays(weekStart, 6)
+  const end = addDays(weekStart, WEEK_DAYS - 1)
   return `${formatDayMonth(weekStart)} – ${formatDayMonth(end)}`
 }
 

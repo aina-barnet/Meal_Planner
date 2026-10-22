@@ -40,7 +40,7 @@ export function RecipePicker({
     const q = fold(query)
     return (recipes.data ?? [])
       .filter((r) => !protein || r.proteinType === protein)
-      .filter((r) => !q || fold(r.name).includes(q) || fold(r.description ?? '').includes(q))
+      .filter((r) => !q || fold(r.name).includes(q))
   }, [recipes.data, protein, query])
 
   return (

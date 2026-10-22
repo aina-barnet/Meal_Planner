@@ -92,6 +92,15 @@ export function LunchboxIcon({ className = 'size-4' }: { className?: string }) {
   )
 }
 
+export function PrintIcon({ className = 'size-4' }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>
+      <path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2" strokeLinejoin="round" />
+      <rect x="7" y="14" width="10" height="6" rx="1" />
+    </svg>
+  )
+}
+
 export function HomeIcon({ className = 'size-4' }: { className?: string }) {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className} aria-hidden>

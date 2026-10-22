@@ -12,7 +12,6 @@ import app.mealplanner.persistence.Repositories.MemberRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,20 +21,16 @@ public class HouseholdService {
 
 	private final HouseholdRepository households;
 	private final MemberRepository members;
-	private final CatalogueService catalogue;
 
-	public HouseholdService(HouseholdRepository households, MemberRepository members, CatalogueService catalogue) {
+	public HouseholdService(HouseholdRepository households, MemberRepository members) {
 		this.households = households;
 		this.members = members;
-		this.catalogue = catalogue;
 	}
 
 	public record MemberData(
 			String name,
 			DietType dietType,
-			String dietNotes,
-			Map<Allergen, AllergenKind> allergens,
-			Set<Long> dislikedIngredientIds) {
+			Map<Allergen, AllergenKind> allergens) {
 	}
 
 	@Transactional(readOnly = true)
@@ -85,21 +80,13 @@ public class HouseholdService {
 
 	public Diner diner(MemberEntity member, DinerLocation location) {
 		return new Diner(member.getId(), member.getName(), location, member.getDietType(),
-				member.getAllergens().keySet(), member.getDislikedIngredientIds());
+				member.getAllergens().keySet());
 	}
 
 	private void apply(MemberEntity member, MemberData data) {
-		List<Long> unknown = data.dislikedIngredientIds().stream().filter(id -> !catalogue.ingredientExists(id)).toList();
-		if (!unknown.isEmpty()) {
-			throw new Errors.RuleViolation("UNKNOWN_INGREDIENT", "Hi ha ingredients que no existeixen.",
-					unknown.stream().map(id -> "Ingredient " + id).toList());
-		}
 		member.setName(data.name().strip());
 		member.setDietType(data.dietType());
-		member.setDietNotes(data.dietNotes() == null || data.dietNotes().isBlank() ? null : data.dietNotes().strip());
 		member.getAllergens().clear();
 		member.getAllergens().putAll(data.allergens());
-		member.getDislikedIngredientIds().clear();
-		member.getDislikedIngredientIds().addAll(data.dislikedIngredientIds());
 	}
 }

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useConfigureWeek, useMembers, useWeek } from '../api/hooks'
 import type { DinerLocation, MealConfigInput, MealSlot, Member, Week } from '../api/types'
-import { SLOT, addDays, formatDayMonth, formatWeekRange, formatWeekday } from '../labels'
+import { SLOT, WEEK_DAYS, addDays, formatDayMonth, formatWeekRange, formatWeekday } from '../labels'
 import { navigate } from '../router'
 import { Button, Card, ErrorBox, HomeIcon, LunchboxIcon, Spinner } from '../ui'
 
@@ -20,7 +20,7 @@ const key = (date: string, slot: MealSlot) => `${date}|${slot}`
 
 function initialDraft(week: Week, members: Member[]): Draft {
   const draft: Draft = {}
-  for (let day = 0; day < 7; day++) {
+  for (let day = 0; day < WEEK_DAYS; day++) {
     const date = addDays(week.weekStart, day)
     for (const slot of SLOTS) {
       const meal = week.meals.find((m) => m.date === date && m.slot === slot)
@@ -37,7 +37,7 @@ function initialDraft(week: Week, members: Member[]): Draft {
 
 function toConfig(week: Week, draft: Draft): MealConfigInput[] {
   const meals: MealConfigInput[] = []
-  for (let day = 0; day < 7; day++) {
+  for (let day = 0; day < WEEK_DAYS; day++) {
     const date = addDays(week.weekStart, day)
     for (const slot of SLOTS) {
       const cell = draft[key(date, slot)]
@@ -66,7 +66,7 @@ function WeekEditor({ week, members }: { week: Week; members: Member[] }) {
   const [dirty, setDirty] = useState(false)
   const configure = useConfigureWeek(week.id)
   const readOnly = week.status === 'CONFIRMED'
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(week.weekStart, i)), [week.weekStart])
+  const days = useMemo(() => Array.from({ length: WEEK_DAYS }, (_, i) => addDays(week.weekStart, i)), [week.weekStart])
 
   const update = (k: string, change: (cell: Cell) => Cell) => {
     setDraft((d) => ({ ...d, [k]: change(d[k]) }))
@@ -165,7 +165,7 @@ function WeekEditor({ week, members }: { week: Week; members: Member[] }) {
         </div>
       )}
 
-      <div className="grid grid-cols-[5rem_repeat(7,minmax(0,1fr))] gap-2">
+      <div className="grid grid-cols-[5rem_repeat(5,minmax(0,1fr))] gap-2">
         <div />
         {days.map((date) => (
           <div key={date} className="px-1 pb-1">

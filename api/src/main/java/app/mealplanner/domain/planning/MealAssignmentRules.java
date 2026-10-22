@@ -16,7 +16,6 @@ import java.util.Set;
  *   <li>no diner may be allergic or intolerant to any of its allergens;</li>
  *   <li>every diner's diet must allow all of its ingredients.</li>
  * </ul>
- * Dislikes are soft and are not checked here.
  */
 public final class MealAssignmentRules {
 

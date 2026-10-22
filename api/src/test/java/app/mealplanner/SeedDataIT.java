@@ -26,12 +26,11 @@ class SeedDataIT {
 	}
 
 	@Test
-	void everyRecipeHasIngredientsStepsAndSeasons() {
+	void everyRecipeHasIngredientsAndSteps() {
 		assertThat(jdbc.queryForList("""
 				SELECT r.code FROM recipe r
 				WHERE NOT EXISTS (SELECT 1 FROM recipe_ingredient ri WHERE ri.recipe_id = r.id)
 				   OR NOT EXISTS (SELECT 1 FROM recipe_step s WHERE s.recipe_id = r.id)
-				   OR NOT EXISTS (SELECT 1 FROM recipe_season s WHERE s.recipe_id = r.id)
 				""", String.class)).isEmpty();
 	}
 

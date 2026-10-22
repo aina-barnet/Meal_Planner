@@ -1,14 +1,15 @@
-import { useHousehold } from '../api/hooks'
-import type { Meal, MealSlot, Week } from '../api/types'
+import { useHousehold, useMembers } from '../api/hooks'
+import type { Meal, MealSlot, Member, Week } from '../api/types'
 import { useProteinName } from '../proteins'
-import { SLOT, addDays, formatDayMonth, formatWeekRange, formatWeekday } from '../labels'
+import { SLOT, WEEK_DAYS, addDays, formatDayMonth, formatWeekRange, formatWeekday } from '../labels'
 
 const SLOTS: MealSlot[] = ['LUNCH', 'DINNER']
 
-/** The week on one landscape page: days across, lunch and dinner down. Sizes in points. */
+/** The week (Monday to Friday) on one landscape page: days across, lunch and dinner down. Sizes in points. */
 export function MenuSheet({ week }: { week: Week }) {
   const household = useHousehold()
-  const days = Array.from({ length: 7 }, (_, i) => addDays(week.weekStart, i))
+  const members = new Map((useMembers().data ?? []).map((m) => [m.id, m]))
+  const days = Array.from({ length: WEEK_DAYS }, (_, i) => addDays(week.weekStart, i))
   const meal = (date: string, slot: MealSlot) => week.meals.find((m) => m.date === date && m.slot === slot)
 
   return (
@@ -39,7 +40,7 @@ export function MenuSheet({ week }: { week: Week }) {
               </th>
               {days.map((date) => (
                 <td key={date} className="h-[62mm] border border-black px-[1.5mm] py-[1.5mm] align-top">
-                  <Cell meal={meal(date, slot)} />
+                  <Cell meal={meal(date, slot)} members={members} />
                 </td>
               ))}
             </tr>
@@ -47,33 +48,46 @@ export function MenuSheet({ week }: { week: Week }) {
         </tbody>
       </table>
       <p className="mt-[3mm]" style={{ fontSize: '8pt' }}>
-        Casa: comensals a casa · Carmanyola: racions per endur-se · +N: racions de més per a un altre dia.
+        A casa: qui menja a casa · Carmanyola: qui s'ho emporta · Fora: qui no hi menja · +N: racions de més per a un altre dia.
       </p>
     </div>
   )
 }
 
-function Cell({ meal }: { meal?: Meal }) {
+function Cell({ meal, members }: { meal?: Meal; members: Map<number, Member> }) {
   const proteinName = useProteinName()
-  if (!meal) return <span className="text-stone-500">—</span>
-  if (!meal.recipe) return <span className="italic text-stone-600">Sense plat</span>
+  if (!meal) return <span className="text-stone-600" style={{ fontSize: '8pt' }}>Fora: tothom</span>
+  const names = (location: 'HOME' | 'TAKEAWAY') =>
+    meal.attendees
+      .filter((a) => a.location === location)
+      .map((a) => members.get(a.memberId)?.name)
+      .filter(Boolean)
+      .join(', ')
+  const home = names('HOME')
+  const takeaway = names('TAKEAWAY')
+  const away = [...members.values()]
+    .filter((m) => !meal.attendees.some((a) => a.memberId === m.id))
+    .map((m) => m.name)
+    .join(', ')
   const r = meal.recipe
   return (
     <div>
-      <p className="font-semibold" style={{ fontSize: '10pt', lineHeight: 1.2 }}>{r.name}</p>
-      <p className="mt-[1mm] text-stone-700" style={{ fontSize: '8pt' }}>
-        {proteinName(r.proteinType)} · {r.prepMinutes} min
-      </p>
-      <p className="mt-[1.5mm]" style={{ fontSize: '8pt' }}>
-        {meal.dinersAtHome > 0 && <>Casa {meal.dinersAtHome}</>}
-        {meal.dinersAtHome > 0 && meal.dinersTakeaway > 0 && ' · '}
-        {meal.dinersTakeaway > 0 && (
-          <strong>
-            Carmanyola {meal.dinersTakeaway} ({r.lunchboxServing === 'COLD' ? 'fred' : 'escalfar'})
-          </strong>
-        )}
-        {meal.extraServings > 0 && ` · +${meal.extraServings}`}
-      </p>
+      {r ? (
+        <>
+          <p className="font-semibold" style={{ fontSize: '10pt', lineHeight: 1.2 }}>{r.name}</p>
+          <p className="mt-[1mm] text-stone-700" style={{ fontSize: '8pt' }}>
+            {proteinName(r.proteinType)} · {r.prepMinutes} min
+          </p>
+        </>
+      ) : (
+        <p className="italic text-stone-600">Sense plat</p>
+      )}
+      <div className="mt-[1.5mm] space-y-[0.5mm]" style={{ fontSize: '8pt' }}>
+        {home && <p>A casa: {home}</p>}
+        {takeaway && <p className="font-semibold">Carmanyola: {takeaway}</p>}
+        {away && <p className="text-stone-600">Fora: {away}</p>}
+        {meal.extraServings > 0 && <p>+{meal.extraServings} racions</p>}
+      </div>
     </div>
   )
 }

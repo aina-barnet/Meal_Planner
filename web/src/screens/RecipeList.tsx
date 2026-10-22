@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useHideRecipe, useRecipes } from '../api/hooks'
 import type { ProteinType } from '../api/types'
-import { CUISINE } from '../labels'
 import { useProteinName } from '../proteins'
 import { ProteinManager } from './ProteinManager'
 import { navigate } from '../router'
@@ -27,7 +26,7 @@ export function RecipeList() {
       .filter((r) => !protein || r.proteinType === protein)
       .filter((r) => !onlyLunchbox || r.portable)
       .filter((r) => !onlyOwn || r.custom)
-      .filter((r) => !q || fold(r.name).includes(q) || fold(r.description ?? '').includes(q))
+      .filter((r) => !q || fold(r.name).includes(q))
   }, [all, query, protein, onlyLunchbox, onlyOwn, showHidden])
   const hiddenCount = all.filter((r) => r.hidden).length
 
@@ -101,16 +100,14 @@ export function RecipeList() {
                     <div className="mt-0.5 flex flex-wrap gap-1">
                       {recipe.portable && (
                         <Badge className="bg-terracotta-100 text-terracotta-700">
-                          <LunchboxIcon className="size-3" /> {recipe.lunchboxServing === 'COLD' ? 'fred' : 'escalfar'}
+                          <LunchboxIcon className="size-3" /> carmanyola
                         </Badge>
                       )}
                       {recipe.custom && <Badge className="bg-avocado-100 text-avocado-800">propi</Badge>}
                       {recipe.hidden && <Badge className="bg-stone-200 text-stone-600">amagat</Badge>}
                     </div>
                   </td>
-                  <td className="px-5 py-3 text-stone-600">
-                    {proteinName(recipe.proteinType)} · {CUISINE[recipe.cuisine]}
-                  </td>
+                  <td className="px-5 py-3 text-stone-600">{proteinName(recipe.proteinType)}</td>
                   <td className="px-5 py-3 text-stone-600">{recipe.prepMinutes} min</td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
                     <Button variant="ghost" className="px-2 py-1" onClick={() => navigate({ screen: 'recipe', recipeId: recipe.id })}>

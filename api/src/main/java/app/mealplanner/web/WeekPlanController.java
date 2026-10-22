@@ -1,25 +1,15 @@
 package app.mealplanner.web;
 
-import app.mealplanner.application.CatalogueService;
 import app.mealplanner.application.MenuGenerationService;
-import app.mealplanner.application.ShoppingListService;
 import app.mealplanner.application.WeekPlanService;
 import app.mealplanner.application.WeekPlanService.MealConfig;
-import app.mealplanner.domain.catalogue.Aisle;
-import app.mealplanner.domain.catalogue.Ingredient;
 import app.mealplanner.domain.planning.DinerLocation;
-import app.mealplanner.persistence.ShoppingListEntity;
-import app.mealplanner.persistence.ShoppingListItemEntity;
-import app.mealplanner.web.Dtos.AisleResponse;
 import app.mealplanner.web.Dtos.AssignRecipeRequest;
 import app.mealplanner.web.Dtos.AttendeeDto;
-import app.mealplanner.web.Dtos.CheckItemRequest;
 import app.mealplanner.web.Dtos.ConfigureWeekRequest;
 import app.mealplanner.web.Dtos.CopyWeekRequest;
 import app.mealplanner.web.Dtos.CreateWeekRequest;
 import app.mealplanner.web.Dtos.RecipeSummary;
-import app.mealplanner.web.Dtos.ShoppingItemResponse;
-import app.mealplanner.web.Dtos.ShoppingListResponse;
 import app.mealplanner.web.Dtos.SwapRequest;
 import app.mealplanner.web.Dtos.UpdateMealRequest;
 import app.mealplanner.web.Dtos.WeekResponse;
@@ -27,13 +17,9 @@ import app.mealplanner.web.Dtos.WeekSummary;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.text.Collator;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
-import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -49,21 +35,14 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/weeks")
-@Tag(name = "Weeks", description = "Week plans, meals, confirmation and the shopping list")
+@Tag(name = "Weeks", description = "Week plans, meals and confirmation")
 public class WeekPlanController {
 
-	private static final Comparator<String> CATALAN = Collator.getInstance(Locale.forLanguageTag("ca"))::compare;
-
 	private final WeekPlanService weeks;
-	private final ShoppingListService shoppingLists;
-	private final CatalogueService catalogue;
 	private final MenuGenerationService generator;
 
-	public WeekPlanController(WeekPlanService weeks, ShoppingListService shoppingLists, CatalogueService catalogue,
-			MenuGenerationService generator) {
+	public WeekPlanController(WeekPlanService weeks, MenuGenerationService generator) {
 		this.weeks = weeks;
-		this.shoppingLists = shoppingLists;
-		this.catalogue = catalogue;
 		this.generator = generator;
 	}
 
@@ -150,50 +129,15 @@ public class WeekPlanController {
 	}
 
 	@PostMapping("/{weekId}/confirm")
-	@Operation(summary = "Confirm the week and generate its shopping list",
-			description = "Every meal needs a dish. The pantry moves forward to what remains after the week, "
-					+ "including leftovers of rounded-up packages.")
+	@Operation(summary = "Confirm the week as the final menu", description = "Every meal needs a dish.")
 	public WeekResponse confirm(@PathVariable long weekId) {
 		return WeekResponse.of(weeks.confirm(weekId));
 	}
 
 	@PostMapping("/{weekId}/reopen")
-	@Operation(summary = "Take a confirmed week back to draft",
-			description = "Discards the shopping list and undoes the confirmation's pantry movement (manual pantry "
-					+ "edits made since are kept). 409 LATER_WEEK_CONFIRMED while a later week is confirmed.")
+	@Operation(summary = "Take a confirmed week back to draft")
 	public WeekResponse reopen(@PathVariable long weekId) {
 		return WeekResponse.of(weeks.reopen(weekId));
-	}
-
-	@GetMapping("/{weekId}/shopping-list")
-	@Operation(summary = "Shopping list of a confirmed week, grouped by aisle")
-	public ShoppingListResponse shoppingList(@PathVariable long weekId) {
-		return response(weekId, shoppingLists.forWeek(weekId));
-	}
-
-	@PatchMapping("/{weekId}/shopping-list/items/{itemId}")
-	@Operation(summary = "Tick or untick a shopping list item")
-	public ShoppingListResponse check(@PathVariable long weekId, @PathVariable long itemId,
-			@Valid @RequestBody CheckItemRequest request) {
-		return response(weekId, shoppingLists.check(weekId, itemId, request.checked()));
-	}
-
-	private ShoppingListResponse response(long weekId, ShoppingListEntity list) {
-		Map<Aisle, List<ShoppingItemResponse>> byAisle = new TreeMap<>();
-		for (ShoppingListItemEntity item : list.getItems()) {
-			Ingredient ingredient = catalogue.ingredient(item.getIngredientId());
-			byAisle.computeIfAbsent(ingredient.aisle(), a -> new java.util.ArrayList<>())
-					.add(new ShoppingItemResponse(item.getId(), ingredient.id(), ingredient.name(),
-							ingredient.canonicalUnit(), item.getRequiredQty(), item.getFromPantryQty(),
-							item.getToBuyQty(), item.getPackages(), item.getPackageSize(), item.getLeftoverQty(),
-							item.getPackages() == 0, item.isChecked()));
-		}
-		List<AisleResponse> aisles = byAisle.entrySet().stream()
-				.map(e -> new AisleResponse(e.getKey(), e.getValue().stream()
-						.sorted(Comparator.comparing(ShoppingItemResponse::name, CATALAN))
-						.toList()))
-				.toList();
-		return new ShoppingListResponse(weekId, list.getGeneratedAt(), aisles, weeks.staplesUsed(weekId));
 	}
 
 	private static Map<Long, DinerLocation> attendees(List<AttendeeDto> attendees) {

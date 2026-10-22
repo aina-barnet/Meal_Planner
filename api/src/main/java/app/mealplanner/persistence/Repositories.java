@@ -39,13 +39,6 @@ public final class Repositories {
 		List<MemberEntity> findByHouseholdIdOrderByIdAsc(Long householdId);
 	}
 
-	public interface PantryItemRepository extends JpaRepository<PantryItemEntity, Long> {
-
-		List<PantryItemEntity> findByHouseholdId(Long householdId);
-
-		Optional<PantryItemEntity> findByHouseholdIdAndIngredientId(Long householdId, Long ingredientId);
-	}
-
 	public interface WeekPlanRepository extends JpaRepository<WeekPlanEntity, Long> {
 
 		@EntityGraph(attributePaths = "meals")
@@ -55,9 +48,6 @@ public final class Repositories {
 
 		@EntityGraph(attributePaths = "meals")
 		Optional<WeekPlanEntity> findByHouseholdIdAndWeekStart(Long householdId, LocalDate weekStart);
-
-		List<WeekPlanEntity> findByHouseholdIdAndStatusAndWeekStartAfterOrderByWeekStartAsc(Long householdId,
-				WeekPlanEntity.Status status, LocalDate weekStart);
 
 		@EntityGraph(attributePaths = "meals")
 		Optional<WeekPlanEntity> findWithMealsById(Long id);
@@ -71,11 +61,5 @@ public final class Repositories {
 				where m.weekPlan.household.id = :householdId and m.weekPlan.id <> :excludedWeekId
 				  and m.recipeId is not null and m.date between :from and :to""")
 		List<MealEntity> findPlannedElsewhere(Long householdId, Long excludedWeekId, LocalDate from, LocalDate to);
-	}
-
-	public interface ShoppingListRepository extends JpaRepository<ShoppingListEntity, Long> {
-
-		@EntityGraph(attributePaths = "items")
-		Optional<ShoppingListEntity> findByWeekPlanId(Long weekPlanId);
 	}
 }

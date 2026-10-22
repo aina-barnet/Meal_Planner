@@ -7,22 +7,11 @@ import app.mealplanner.domain.planning.DinerLocation;
 import app.mealplanner.domain.planning.MealAssignmentRules;
 import app.mealplanner.domain.planning.MealServings;
 import app.mealplanner.domain.planning.MealSlot;
-import app.mealplanner.domain.shopping.PantryRollback;
-import app.mealplanner.domain.shopping.PlannedMeal;
-import app.mealplanner.domain.shopping.ShoppingList;
-import app.mealplanner.domain.shopping.ShoppingListCalculator;
-import app.mealplanner.domain.shopping.ShoppingListItem;
 import app.mealplanner.persistence.HouseholdEntity;
 import app.mealplanner.persistence.MealEntity;
 import app.mealplanner.persistence.MemberEntity;
-import app.mealplanner.persistence.PantryItemEntity;
-import app.mealplanner.persistence.Repositories.PantryItemRepository;
-import app.mealplanner.persistence.Repositories.ShoppingListRepository;
 import app.mealplanner.persistence.Repositories.WeekPlanRepository;
-import app.mealplanner.persistence.ShoppingListEntity;
-import app.mealplanner.persistence.ShoppingListItemEntity;
 import app.mealplanner.persistence.WeekPlanEntity;
-import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -46,19 +35,17 @@ public class WeekPlanService {
 
 	private static final DateTimeFormatter DAY = DateTimeFormatter.ofPattern("EEEE d/M", Locale.forLanguageTag("ca"));
 
+	/** Monday to Friday: weekends are not planned. */
+	public static final int PLANNED_DAYS = 5;
+
 	private final WeekPlanRepository weeks;
-	private final PantryItemRepository pantry;
-	private final ShoppingListRepository shoppingLists;
 	private final HouseholdService household;
 	private final CatalogueService catalogue;
 	private final Clock clock;
 
-	public WeekPlanService(WeekPlanRepository weeks, PantryItemRepository pantry,
-			ShoppingListRepository shoppingLists, HouseholdService household, CatalogueService catalogue,
+	public WeekPlanService(WeekPlanRepository weeks, HouseholdService household, CatalogueService catalogue,
 			Clock clock) {
 		this.weeks = weeks;
-		this.pantry = pantry;
-		this.shoppingLists = shoppingLists;
 		this.household = household;
 		this.catalogue = catalogue;
 		this.clock = clock;
@@ -72,8 +59,7 @@ public class WeekPlanService {
 			MealEntity meal,
 			RecipeView recipe,
 			int dinersAtHome,
-			int dinersTakeaway,
-			List<String> notes) {
+			int dinersTakeaway) {
 
 		public int totalServings() {
 			return dinersAtHome + dinersTakeaway + meal.getExtraServings();
@@ -93,10 +79,9 @@ public class WeekPlanService {
 	@Transactional(readOnly = true)
 	public WeekDetail detail(long weekId) {
 		WeekPlanEntity week = week(weekId);
-		Map<Long, MemberEntity> members = membersById();
 		List<MealDetail> meals = week.getMeals().stream()
 				.sorted(java.util.Comparator.comparing(MealEntity::getDate).thenComparing(MealEntity::getSlot))
-				.map(meal -> detail(meal, members))
+				.map(meal -> detail(meal))
 				.toList();
 		return new WeekDetail(week, meals);
 	}
@@ -111,23 +96,9 @@ public class WeekPlanService {
 				.toList();
 	}
 
-	/** Pantry staples (oil, spices) used by the week's dishes, by name. */
-	@Transactional(readOnly = true)
-	public List<String> staplesUsed(long weekId) {
-		return week(weekId).getMeals().stream()
-				.filter(meal -> meal.getRecipeId() != null)
-				.flatMap(meal -> catalogue.recipe(meal.getRecipeId()).recipe().ingredients().stream())
-				.map(line -> line.ingredient())
-				.filter(ingredient -> ingredient.pantryStaple())
-				.map(ingredient -> ingredient.name())
-				.distinct()
-				.sorted(java.text.Collator.getInstance(Locale.forLanguageTag("ca")))
-				.toList();
-	}
-
 	// ---------------------------------------------------------------- commands
 
-	/** Creates a draft week with every lunch and dinner planned for every member, at home. */
+	/** Creates a draft week with every weekday lunch and dinner planned for every member, at home. */
 	public WeekPlanEntity create(LocalDate weekStart) {
 		if (weekStart.getDayOfWeek() != DayOfWeek.MONDAY) {
 			throw new Errors.RuleViolation("WEEK_START_NOT_MONDAY", "Les setmanes comencen en dilluns.", List.of());
@@ -139,7 +110,7 @@ public class WeekPlanService {
 		WeekPlanEntity week = new WeekPlanEntity(home, weekStart);
 		Map<Long, DinerLocation> everyoneHome = household.members().stream()
 				.collect(Collectors.toMap(MemberEntity::getId, m -> DinerLocation.HOME));
-		for (int day = 0; day < 7; day++) {
+		for (int day = 0; day < PLANNED_DAYS; day++) {
 			for (MealSlot slot : MealSlot.values()) {
 				MealEntity meal = new MealEntity(week, weekStart.plusDays(day), slot);
 				meal.getAttendees().putAll(everyoneHome);
@@ -187,7 +158,7 @@ public class WeekPlanService {
 					copy.getAttendees().put(memberId, location);
 				}
 			});
-			if (copy.getAttendees().isEmpty()) {
+			if (copy.getAttendees().isEmpty() || copy.getDate().isAfter(targetWeekStart.plusDays(PLANNED_DAYS - 1))) {
 				continue;
 			}
 			copy.setExtraServings(original.getExtraServings());
@@ -278,10 +249,7 @@ public class WeekPlanService {
 		return detail(weekId);
 	}
 
-	/**
-	 * Confirms the week: every meal must have a valid recipe. Produces the shopping list snapshot
-	 * and moves the pantry forward to what will be left once the week is cooked.
-	 */
+	/** Confirms the week as the final menu: every meal must have a valid recipe. */
 	public WeekDetail confirm(long weekId) {
 		WeekPlanEntity week = draft(weekId);
 		if (week.getMeals().isEmpty()) {
@@ -295,107 +263,29 @@ public class WeekPlanService {
 			throw new Errors.RuleViolation("UNASSIGNED_MEALS", "Hi ha àpats sense plat.", unassigned);
 		}
 		Map<Long, MemberEntity> members = membersById();
-		List<PlannedMeal> planned = new ArrayList<>();
 		for (MealEntity meal : week.getMeals()) {
-			RecipeView recipe = catalogue.recipe(meal.getRecipeId());
-			rejectIfInvalid(recipe, meal, members);
-			planned.add(new PlannedMeal(recipe.recipe(), servings(meal)));
+			rejectIfInvalid(catalogue.recipe(meal.getRecipeId()), meal, members);
 		}
-
-		HouseholdEntity home = household.require();
-		List<PantryItemEntity> pantryItems = pantry.findByHouseholdId(home.getId());
-		Map<Long, BigDecimal> atHome = pantryItems.stream()
-				.collect(Collectors.toMap(PantryItemEntity::getIngredientId, PantryItemEntity::getQuantity));
-		ShoppingList list = ShoppingListCalculator.calculate(planned, atHome);
-
-		ShoppingListEntity snapshot = new ShoppingListEntity(week, clock.instant());
-		for (ShoppingListItem item : list.items()) {
-			snapshot.getItems().add(new ShoppingListItemEntity(snapshot, item.ingredient().id(), item.required(),
-					item.fromPantry(), item.toBuy(), item.packages(), item.ingredient().packageSize(), item.leftover()));
-		}
-		shoppingLists.save(snapshot);
-		updatePantry(home, pantryItems, list.pantryAfter());
 		week.confirm(clock.instant());
 		return detail(weekId);
 	}
 
-	/**
-	 * Takes a confirmed week back to draft, e.g. after confirming by mistake: the shopping list is
-	 * discarded and the pantry movement of the confirmation is undone. Refused while a later week
-	 * is confirmed, because that week's pantry was computed from this one's leftovers.
-	 */
+	/** Takes a confirmed week back to draft so its menu can be changed again. */
 	public WeekDetail reopen(long weekId) {
 		WeekPlanEntity week = week(weekId);
 		if (week.getStatus() != WeekPlanEntity.Status.CONFIRMED) {
 			throw new Errors.Conflict("WEEK_NOT_CONFIRMED", "La setmana ja és un esborrany.");
 		}
-		HouseholdEntity home = household.require();
-		List<WeekPlanEntity> later = weeks.findByHouseholdIdAndStatusAndWeekStartAfterOrderByWeekStartAsc(
-				home.getId(), WeekPlanEntity.Status.CONFIRMED, week.getWeekStart());
-		if (!later.isEmpty()) {
-			throw new Errors.Conflict("LATER_WEEK_CONFIRMED", "Primer cal tornar a esborrany la setmana del "
-					+ DateTimeFormatter.ofPattern("d/M", Locale.forLanguageTag("ca")).format(later.getLast().getWeekStart())
-					+ ", que es va calcular amb el rebost que deixa aquesta.");
-		}
-
-		shoppingLists.findByWeekPlanId(weekId).ifPresent(list -> {
-			List<PantryItemEntity> pantryItems = pantry.findByHouseholdId(home.getId());
-			Map<Long, BigDecimal> current = pantryItems.stream()
-					.collect(Collectors.toMap(PantryItemEntity::getIngredientId, PantryItemEntity::getQuantity));
-			List<PantryRollback.Movement> movements = list.getItems().stream()
-					.map(item -> new PantryRollback.Movement(item.getIngredientId(), item.getFromPantryQty(),
-							item.getLeftoverQty()))
-					.toList();
-			updatePantry(home, pantryItems, PantryRollback.undo(current, movements));
-			shoppingLists.delete(list);
-		});
 		week.reopen();
 		return detail(weekId);
 	}
 
 	// ---------------------------------------------------------------- helpers
 
-	private void updatePantry(HouseholdEntity home, List<PantryItemEntity> current, Map<Long, BigDecimal> after) {
-		Map<Long, PantryItemEntity> byIngredient = current.stream()
-				.collect(Collectors.toMap(PantryItemEntity::getIngredientId, Function.identity()));
-		for (PantryItemEntity item : current) {
-			if (!after.containsKey(item.getIngredientId())) {
-				pantry.delete(item);
-			}
-		}
-		after.forEach((ingredientId, quantity) -> {
-			PantryItemEntity item = byIngredient.get(ingredientId);
-			if (item == null) {
-				pantry.save(new PantryItemEntity(home, ingredientId, quantity));
-			} else {
-				item.setQuantity(quantity);
-			}
-		});
-	}
-
-	private MealDetail detail(MealEntity meal, Map<Long, MemberEntity> members) {
+	private MealDetail detail(MealEntity meal) {
 		MealServings servings = servings(meal);
 		RecipeView recipe = meal.getRecipeId() == null ? null : catalogue.recipe(meal.getRecipeId());
-		List<String> notes = recipe == null ? List.of() : dislikeNotes(recipe, meal, members);
-		return new MealDetail(meal, recipe, servings.dinersAtHome(), servings.dinersTakeaway(), notes);
-	}
-
-	private List<String> dislikeNotes(RecipeView recipe, MealEntity meal, Map<Long, MemberEntity> members) {
-		Set<Long> inRecipe = recipe.recipe().ingredients().stream()
-				.map(line -> line.ingredient().id())
-				.collect(Collectors.toSet());
-		List<String> notes = new ArrayList<>();
-		for (Long memberId : meal.getAttendees().keySet()) {
-			MemberEntity member = members.get(memberId);
-			if (member == null) {
-				continue;
-			}
-			member.getDislikedIngredientIds().stream()
-					.filter(inRecipe::contains)
-					.map(id -> catalogue.ingredient(id).name().toLowerCase(Locale.forLanguageTag("ca")))
-					.forEach(name -> notes.add("A " + member.getName() + " no li agrada: " + name + "."));
-		}
-		return notes;
+		return new MealDetail(meal, recipe, servings.dinersAtHome(), servings.dinersTakeaway());
 	}
 
 	private void dropRecipeIfNowInvalid(MealEntity meal, Map<Long, MemberEntity> members) {
@@ -440,7 +330,7 @@ public class WeekPlanService {
 		LocalDate start = week.getWeekStart();
 		for (MealConfig config : configs) {
 			String label = label(config.date(), config.slot());
-			if (config.date().isBefore(start) || config.date().isAfter(start.plusDays(6))) {
+			if (config.date().isBefore(start) || config.date().isAfter(start.plusDays(PLANNED_DAYS - 1))) {
 				problems.add("El " + label + " no és d'aquesta setmana.");
 			}
 			if (!seen.add(key(config.date(), config.slot()))) {

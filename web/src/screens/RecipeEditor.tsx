@@ -1,16 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useHideRecipe, useIngredients, useProteins, useRecipe, useSaveRecipe, useSaveProtein } from '../api/hooks'
-import type {
-  Cuisine,
-  Ingredient,
-  RecipeDetail,
-  RecipeInput,
-  ScalingMode,
-  Season,
-  Unit,
-} from '../api/types'
+import type { Ingredient, RecipeDetail, RecipeInput, Unit } from '../api/types'
 import { type Line, allergensOf, dietsOf, supportedUnits } from '../catalogue'
-import { ALLERGEN, CUISINE, DIET, SCALING, SEASON, UNIT } from '../labels'
+import { ALLERGEN, DIET, UNIT } from '../labels'
 import { navigate } from '../router'
 import { Button, Card, ErrorBox, Field, LunchboxIcon, Spinner, inputClass } from '../ui'
 import { IngredientModal } from './IngredientModal'
@@ -20,11 +12,9 @@ interface LineDraft {
   ingredientId: number | null
   quantity: string
   unit: Unit
-  scalingMode: ScalingMode
 }
 
-interface Draft extends Omit<RecipeInput, 'ingredients' | 'description'> {
-  description: string
+interface Draft extends Omit<RecipeInput, 'ingredients'> {
   lines: LineDraft[]
 }
 
@@ -33,15 +23,11 @@ let nextKey = 1
 function emptyDraft(): Draft {
   return {
     name: '',
-    description: '',
     baseServings: 4,
     prepMinutes: 30,
     proteinType: 'VEGETABLES',
-    cuisine: 'OTHER',
-    seasons: ['SPRING', 'SUMMER', 'AUTUMN', 'WINTER'],
     portable: false,
-    lunchboxServing: null,
-    lines: [{ key: nextKey++, ingredientId: null, quantity: '', unit: 'G', scalingMode: 'LINEAR' }],
+    lines: [{ key: nextKey++, ingredientId: null, quantity: '', unit: 'G' }],
     steps: [''],
   }
 }
@@ -50,20 +36,15 @@ function fromDetail(detail: RecipeDetail): Draft {
   const s = detail.summary
   return {
     name: s.name,
-    description: s.description ?? '',
     baseServings: s.baseServings,
     prepMinutes: s.prepMinutes,
     proteinType: s.proteinType,
-    cuisine: s.cuisine,
-    seasons: s.seasons,
     portable: s.portable,
-    lunchboxServing: s.lunchboxServing,
     lines: detail.ingredients.map((l) => ({
       key: nextKey++,
       ingredientId: l.ingredientId,
       quantity: String(l.quantity),
       unit: l.unit,
-      scalingMode: l.scalingMode,
     })),
     steps: detail.steps.length > 0 ? detail.steps : [''],
   }
@@ -117,26 +98,19 @@ function Editor({ recipeId, detail, ingredients }: { recipeId: number | null; de
     previewLines.length === 0 && 'Afegiu almenys un ingredient.',
     incomplete && 'Hi ha ingredients sense triar o sense quantitat.',
     steps.length === 0 && 'Afegiu almenys un pas.',
-    draft.seasons.length === 0 && 'Trieu almenys una temporada.',
-    draft.portable && !draft.lunchboxServing && 'Indiqueu si es menja fred o cal escalfar-lo.',
   ].filter(Boolean) as string[]
 
   const submit = () => {
     const input: RecipeInput = {
       name: draft.name.trim(),
-      description: draft.description.trim() || null,
       baseServings: draft.baseServings,
       prepMinutes: draft.prepMinutes,
       proteinType: draft.proteinType,
-      cuisine: draft.cuisine,
-      seasons: draft.seasons,
       portable: draft.portable,
-      lunchboxServing: draft.portable ? draft.lunchboxServing : null,
       ingredients: draft.lines.map((l) => ({
         ingredientId: l.ingredientId!,
         quantity: Number(l.quantity),
         unit: l.unit,
-        scalingMode: l.scalingMode,
       })),
       steps,
     }
@@ -189,42 +163,15 @@ function Editor({ recipeId, detail, ingredients }: { recipeId: number | null; de
                   onChange={(e) => set('prepMinutes', Math.max(1, Number(e.target.value)))} />
               </Field>
             </div>
-            <Field label="Descripció" hint="Opcional, una línia">
-              <input className={inputClass} value={draft.description} onChange={(e) => set('description', e.target.value)} />
-            </Field>
             <div className="grid grid-cols-2 gap-4">
               <ProteinField value={draft.proteinType} onChange={(code) => set('proteinType', code)} />
-              <Field label="Cuina">
-                <select className={inputClass} value={draft.cuisine} onChange={(e) => set('cuisine', e.target.value as Cuisine)}>
-                  {(Object.keys(CUISINE) as Cuisine[]).map((c) => (
-                    <option key={c} value={c}>{CUISINE[c]}</option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <Field label="Temporada">
+              <Field label="Apte per a carmanyola?" hint="Tots els plats es poden menjar a casa. Aguanta bé en un tàper fora de casa?">
                 <div className="flex flex-wrap gap-1.5">
-                  {(Object.keys(SEASON) as Season[]).map((season) => {
-                    const on = draft.seasons.includes(season)
-                    return (
-                      <Toggle key={season} on={on} onClick={() => set('seasons', on ? draft.seasons.filter((x) => x !== season) : [...draft.seasons, season])}>
-                        {SEASON[season]}
-                      </Toggle>
-                    )
-                  })}
-                </div>
-              </Field>
-              <Field label="Carmanyola" hint="Aguanta bé que el poseu en un tàper, a la nevera i fora de casa?">
-                <div className="flex flex-wrap gap-1.5">
-                  <Toggle on={!draft.portable} onClick={() => setDraft((d) => ({ ...d, portable: false, lunchboxServing: null }))}>
+                  <Toggle on={draft.portable} onClick={() => set('portable', true)}>
+                    <LunchboxIcon className="size-3.5" /> Sí
+                  </Toggle>
+                  <Toggle on={!draft.portable} onClick={() => set('portable', false)}>
                     No
-                  </Toggle>
-                  <Toggle on={draft.portable && draft.lunchboxServing === 'COLD'} onClick={() => setDraft((d) => ({ ...d, portable: true, lunchboxServing: 'COLD' }))}>
-                    <LunchboxIcon className="size-3.5" /> Sí, fred
-                  </Toggle>
-                  <Toggle on={draft.portable && draft.lunchboxServing === 'REHEAT'} onClick={() => setDraft((d) => ({ ...d, portable: true, lunchboxServing: 'REHEAT' }))}>
-                    <LunchboxIcon className="size-3.5" /> Sí, escalfant
                   </Toggle>
                 </div>
               </Field>
@@ -236,18 +183,17 @@ function Editor({ recipeId, detail, ingredients }: { recipeId: number | null; de
               <h2 className="font-semibold">Ingredients</h2>
               <span className="text-xs text-stone-500">per a {draft.baseServings} racions</span>
             </div>
-            <div className="grid grid-cols-[1fr_6rem_9rem_9rem_2rem] gap-2 text-xs text-stone-500">
+            <div className="grid grid-cols-[1fr_6rem_9rem_2rem] gap-2 text-xs text-stone-500">
               <span>Ingredient</span>
               <span>Quantitat</span>
               <span>Unitat</span>
-              <span title="Com canvia la quantitat quan cuineu per a més o menys gent">Si canvien les racions</span>
               <span />
             </div>
             {draft.lines.map((line) => {
               const ingredient = line.ingredientId !== null ? byId.get(line.ingredientId) : undefined
               const units = ingredient ? supportedUnits(ingredient) : (['G'] as Unit[])
               return (
-                <div key={line.key} className="grid grid-cols-[1fr_6rem_9rem_9rem_2rem] items-center gap-2">
+                <div key={line.key} className="grid grid-cols-[1fr_6rem_9rem_2rem] items-center gap-2">
                   <IngredientPicker
                     ingredients={ingredients}
                     selected={ingredient}
@@ -263,12 +209,6 @@ function Editor({ recipeId, detail, ingredients }: { recipeId: number | null; de
                       <option key={u} value={u}>{UNIT[u]}</option>
                     ))}
                   </select>
-                  <select className={inputClass} value={line.scalingMode} title={SCALING[line.scalingMode].hint}
-                    onChange={(e) => setLine(line.key, { scalingMode: e.target.value as ScalingMode })}>
-                    {(Object.keys(SCALING) as ScalingMode[]).map((m) => (
-                      <option key={m} value={m} title={SCALING[m].hint}>{SCALING[m].label}</option>
-                    ))}
-                  </select>
                   <button type="button" aria-label="Treu l'ingredient" title="Treu"
                     className="text-stone-400 hover:text-terracotta-700 disabled:opacity-30"
                     disabled={draft.lines.length === 1}
@@ -279,7 +219,7 @@ function Editor({ recipeId, detail, ingredients }: { recipeId: number | null; de
               )
             })}
             <Button variant="ghost" className="px-2 py-1" onClick={() =>
-              set('lines', [...draft.lines, { key: nextKey++, ingredientId: null, quantity: '', unit: 'G', scalingMode: 'LINEAR' }])}>
+              set('lines', [...draft.lines, { key: nextKey++, ingredientId: null, quantity: '', unit: 'G' }])}>
               + Afegeix un ingredient
             </Button>
           </Card>

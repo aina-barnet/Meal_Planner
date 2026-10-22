@@ -25,8 +25,8 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 class CatalogueEditIT {
 
 	private static final String TOFU = """
-			{"name":"Tofu ferm","category":"LEGUME","canonicalUnit":"G","packageSize":400,"aisle":"DAIRY_EGGS",
-			 "allergens":["SOY"],"conversions":{"UNIT":200},"pantryStaple":false}""";
+			{"name":"Tofu ferm","category":"LEGUME","canonicalUnit":"G",
+			 "allergens":["SOY"],"conversions":{"UNIT":200}}""";
 
 	@Autowired
 	MockMvcTester mvc;
@@ -53,7 +53,7 @@ class CatalogueEditIT {
 		assertThat(tofu).hasStatus(201).bodyJson().extractingPath("$.custom").isEqualTo(true);
 		long tofuId = id(tofu);
 
-		MvcTestResult recipe = post("/api/recipes", recipe("Tofu amb verdures", tofuId, "UNIT", 2, true, "REHEAT"));
+		MvcTestResult recipe = post("/api/recipes", recipe("Tofu amb verdures", tofuId, "UNIT", 2, true));
 
 		assertThat(recipe).hasStatus(201);
 		assertThat(recipe).bodyJson().extractingPath("$.summary.custom").isEqualTo(true);
@@ -70,19 +70,11 @@ class CatalogueEditIT {
 	void rejectsUnitsTheIngredientCannotBeExpressedIn() {
 		long tofuId = id(post("/api/ingredients", TOFU));
 
-		MvcTestResult rejected = post("/api/recipes", recipe("Tofu en cullerades", tofuId, "TBSP", 2, false, null));
+		MvcTestResult rejected = post("/api/recipes", recipe("Tofu en cullerades", tofuId, "TBSP", 2, false));
 
 		assertThat(rejected).hasStatus(422).bodyJson().extractingPath("$.code").isEqualTo("INVALID_RECIPE_LINES");
 		List<String> reasons = JsonPath.read(body(rejected), "$.reasons");
 		assertThat(reasons).singleElement().asString().contains("Tofu ferm").contains("cullerades");
-	}
-
-	@Test
-	void portableRecipesMustSayHowTheyAreEaten() {
-		long tofuId = id(post("/api/ingredients", TOFU));
-
-		assertThat(post("/api/recipes", recipe("Sense dir", tofuId, "UNIT", 1, true, null))).hasStatus(422)
-				.bodyJson().extractingPath("$.code").isEqualTo("LUNCHBOX_SERVING_REQUIRED");
 	}
 
 	@Test
@@ -117,7 +109,7 @@ class CatalogueEditIT {
 	@Test
 	void ingredientEditsCannotBreakRecipesAndSeededIngredientsAreFixed() {
 		long tofuId = id(post("/api/ingredients", TOFU));
-		post("/api/recipes", recipe("Tofu amb verdures", tofuId, "UNIT", 2, false, null));
+		post("/api/recipes", recipe("Tofu amb verdures", tofuId, "UNIT", 2, false));
 
 		MvcTestResult broken = put("/api/ingredients/" + tofuId, TOFU.replace("\"conversions\":{\"UNIT\":200}", "\"conversions\":{}"));
 		assertThat(broken).hasStatus(422).bodyJson().extractingPath("$.code").isEqualTo("INGREDIENT_IN_USE");
@@ -128,7 +120,7 @@ class CatalogueEditIT {
 		long egg = jdbc.queryForObject("SELECT id FROM ingredient WHERE code = 'egg'", Long.class);
 		assertThat(put("/api/ingredients/" + egg, TOFU.replace("Tofu ferm", "Ous nous"))).hasStatus(409)
 				.bodyJson().extractingPath("$.code").isEqualTo("INGREDIENT_NOT_EDITABLE");
-		assertThat(post("/api/ingredients", TOFU)).hasStatus(409)
+		assertThat(post("/api/ingredients", TOFU.replace("Tofu ferm", "Tofu sedós"))).hasStatus(409)
 				.bodyJson().extractingPath("$.code").isEqualTo("DUPLICATE_INGREDIENT");
 	}
 
@@ -140,7 +132,7 @@ class CatalogueEditIT {
 		long tofuId = id(post("/api/ingredients", TOFU));
 
 		MvcTestResult recipe = post("/api/recipes",
-				recipe("Tofu amb verdures", tofuId, "UNIT", 2, false, null).replace("\"LEGUMES\"", "\"" + code + "\""));
+				recipe("Tofu amb verdures", tofuId, "UNIT", 2, false).replace("\"LEGUMES\"", "\"" + code + "\""));
 
 		assertThat(recipe).hasStatus(201).bodyJson().extractingPath("$.summary.proteinType").isEqualTo(code);
 		List<Integer> used = JsonPath.read(body(mvc.get().uri("/api/proteins").exchange()),
@@ -170,26 +162,23 @@ class CatalogueEditIT {
 	void recipesMustUseAnExistingProteinType() {
 		long tofuId = id(post("/api/ingredients", TOFU));
 
-		assertThat(post("/api/recipes", recipe("Misteri", tofuId, "UNIT", 1, false, null).replace("\"LEGUMES\"", "\"NOPE\"")))
+		assertThat(post("/api/recipes", recipe("Misteri", tofuId, "UNIT", 1, false).replace("\"LEGUMES\"", "\"NOPE\"")))
 				.hasStatus(422).bodyJson().extractingPath("$.code").isEqualTo("UNKNOWN_PROTEIN");
 	}
 
 	// ------------------------------------------------------------------ helpers
 
-	private String recipe(String name, long ingredientId, String unit, int quantity, boolean portable, String serving) {
+	private String recipe(String name, long ingredientId, String unit, int quantity, boolean portable) {
 		long potato = jdbc.queryForObject("SELECT id FROM ingredient WHERE code = 'potato'", Long.class);
 		long oil = jdbc.queryForObject("SELECT id FROM ingredient WHERE code = 'olive_oil'", Long.class);
 		return """
-				{"name":"%s","description":"Prova","baseServings":4,"prepMinutes":30,
-				 "proteinType":"LEGUMES","cuisine":"OTHER","seasons":["AUTUMN","WINTER"],
-				 "portable":%s,"lunchboxServing":%s,
+				{"name":"%s","baseServings":4,"prepMinutes":30,"proteinType":"LEGUMES","portable":%s,
 				 "ingredients":[
-				   {"ingredientId":%d,"quantity":%d,"unit":"%s","scalingMode":"LINEAR"},
-				   {"ingredientId":%d,"quantity":400,"unit":"G","scalingMode":"LINEAR"},
-				   {"ingredientId":%d,"quantity":2,"unit":"TBSP","scalingMode":"LINEAR"}],
+				   {"ingredientId":%d,"quantity":%d,"unit":"%s"},
+				   {"ingredientId":%d,"quantity":400,"unit":"G"},
+				   {"ingredientId":%d,"quantity":2,"unit":"TBSP"}],
 				 "steps":["Talleu-ho tot.","Coeu-ho 20 minuts."]}"""
-				.formatted(name, portable, serving == null ? "null" : "\"" + serving + "\"", ingredientId, quantity, unit,
-						potato, oil);
+				.formatted(name, portable, ingredientId, quantity, unit, potato, oil);
 	}
 
 	/** Turns a recipe detail response back into an update request. */
@@ -204,18 +193,13 @@ class CatalogueEditIT {
 			ingredients.append("{\"ingredientId\":").append((Object) s.read("$.ingredients[" + i + "].ingredientId"))
 					.append(",\"quantity\":").append((Object) s.read("$.ingredients[" + i + "].quantity"))
 					.append(",\"unit\":\"").append((Object) s.read("$.ingredients[" + i + "].unit"))
-					.append("\",\"scalingMode\":\"").append((Object) s.read("$.ingredients[" + i + "].scalingMode"))
 					.append("\"}");
 		}
 		List<String> steps = s.read("$.steps");
-		List<String> seasons = s.read("$.summary.seasons");
-		String serving = s.read("$.summary.lunchboxServing");
-		return "{\"name\":\"" + s.read("$.summary.name") + "\",\"description\":\"" + s.read("$.summary.description")
-				+ "\",\"baseServings\":" + s.read("$.summary.baseServings") + ",\"prepMinutes\":"
-				+ s.read("$.summary.prepMinutes") + ",\"proteinType\":\"" + s.read("$.summary.proteinType")
-				+ "\",\"cuisine\":\"" + s.read("$.summary.cuisine") + "\",\"seasons\":" + json(seasons)
-				+ ",\"portable\":" + s.read("$.summary.portable") + ",\"lunchboxServing\":"
-				+ (serving == null ? "null" : "\"" + serving + "\"") + ",\"ingredients\":[" + ingredients
+		return "{\"name\":\"" + s.read("$.summary.name") + "\",\"baseServings\":" + s.read("$.summary.baseServings")
+				+ ",\"prepMinutes\":" + s.read("$.summary.prepMinutes") + ",\"proteinType\":\""
+				+ s.read("$.summary.proteinType") + "\",\"portable\":" + s.read("$.summary.portable")
+				+ ",\"ingredients\":[" + ingredients
 				+ "],\"steps\":" + json(steps) + "}";
 	}
 

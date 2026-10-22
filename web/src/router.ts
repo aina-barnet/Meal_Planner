@@ -1,26 +1,22 @@
 import { useEffect, useState } from 'react'
 
 /**
- * Hash-based routes. Four screens do not justify a routing library:
+ * Hash-based routes. A handful of screens do not justify a routing library:
  *   #/llar              setup wizard
- *   #/rebost            pantry
  *   #/plats             recipe list
  *   #/plats/nou         new recipe
  *   #/plats/:id         recipe editor
  *   #/setmana           week list / new week
  *   #/setmana/:id       week configuration
  *   #/menu/:id          menu board
- *   #/compra/:id        shopping list
  */
 export type Route =
   | { screen: 'household' }
-  | { screen: 'pantry' }
   | { screen: 'recipes' }
   | { screen: 'recipe'; recipeId: number | null }
   | { screen: 'weeks' }
   | { screen: 'week'; weekId: number }
   | { screen: 'menu'; weekId: number }
-  | { screen: 'shopping'; weekId: number }
 
 export function parseRoute(hash: string): Route | null {
   const parts = hash.replace(/^#\/?/, '').split('/').filter(Boolean)
@@ -28,8 +24,6 @@ export function parseRoute(hash: string): Route | null {
   switch (parts[0]) {
     case 'llar':
       return { screen: 'household' }
-    case 'rebost':
-      return { screen: 'pantry' }
     case 'plats':
       if (parts[1] === 'nou') return { screen: 'recipe', recipeId: null }
       return Number.isInteger(id) && id > 0 ? { screen: 'recipe', recipeId: id } : { screen: 'recipes' }
@@ -37,8 +31,6 @@ export function parseRoute(hash: string): Route | null {
       return Number.isInteger(id) && id > 0 ? { screen: 'week', weekId: id } : { screen: 'weeks' }
     case 'menu':
       return Number.isInteger(id) && id > 0 ? { screen: 'menu', weekId: id } : { screen: 'weeks' }
-    case 'compra':
-      return Number.isInteger(id) && id > 0 ? { screen: 'shopping', weekId: id } : { screen: 'weeks' }
     default:
       return null
   }
@@ -48,8 +40,6 @@ export function href(route: Route): string {
   switch (route.screen) {
     case 'household':
       return '#/llar'
-    case 'pantry':
-      return '#/rebost'
     case 'recipes':
       return '#/plats'
     case 'recipe':
@@ -60,8 +50,6 @@ export function href(route: Route): string {
       return `#/setmana/${route.weekId}`
     case 'menu':
       return `#/menu/${route.weekId}`
-    case 'shopping':
-      return `#/compra/${route.weekId}`
   }
 }
 

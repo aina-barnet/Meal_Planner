@@ -74,17 +74,22 @@ class WeekFlowIT {
 	}
 
 	@Test
-	void newWeekPlansEveryLunchAndDinnerForEveryone() {
+	void newWeekPlansEveryWeekdayLunchAndDinnerForEveryone() {
 		setUpHousehold();
-		post("/api/household/members", member("Anna"));
+		long anna = id(post("/api/household/members", member("Anna")));
 		post("/api/household/members", member("Pau"));
 
 		MvcTestResult week = post("/api/weeks", "{\"weekStart\":\"" + MONDAY + "\"}");
 
-		assertThat(week).hasStatus(201).bodyJson().extractingPath("$.meals.length()").isEqualTo(14);
+		// Monday to Friday, lunch and dinner: weekends are not planned.
+		assertThat(week).hasStatus(201).bodyJson().extractingPath("$.meals.length()").isEqualTo(10);
 		assertThat(week).bodyJson().extractingPath("$.meals[0].dinersAtHome").isEqualTo(2);
 		assertThat(mvc.get().uri("/api/weeks").exchange()).hasStatusOk()
-				.bodyJson().extractingPath("$[0].mealCount").isEqualTo(14);
+				.bodyJson().extractingPath("$[0].mealCount").isEqualTo(10);
+		assertThat(put("/api/weeks/" + id(week) + "/meals", """
+				{"meals":[{"date":"%s","slot":"LUNCH","extraServings":0,
+				  "attendees":[{"memberId":%d,"location":"HOME"}]}]}""".formatted("2026-10-17", anna)))
+				.hasStatus(422).bodyJson().extractingPath("$.code").isEqualTo("INVALID_WEEK_CONFIGURATION");
 		assertThat(post("/api/weeks", "{\"weekStart\":\"" + MONDAY + "\"}")).hasStatus(409);
 		assertThat(post("/api/weeks", "{\"weekStart\":\"2026-10-13\"}")).hasStatus(422)
 				.bodyJson().extractingPath("$.code").isEqualTo("WEEK_START_NOT_MONDAY");
@@ -152,87 +157,34 @@ class WeekFlowIT {
 	}
 
 	@Test
-	void confirmingProducesTheShoppingListAndMovesThePantryForward() {
+	void aWeekCanBeConfirmedOnceEveryMealHasADish() {
 		Fixture f = weekWithOneLunchboxLunchAndOneDinner();
 		assertThat(post("/api/weeks/" + f.weekId + "/confirm", "")).hasStatus(422)
 				.bodyJson().extractingPath("$.code").isEqualTo("UNASSIGNED_MEALS");
 
 		put(mealUri(f, f.lunchId) + "/recipe", "{\"recipeId\":" + recipe("truita-patates") + "}");
 		put(mealUri(f, f.dinnerId) + "/recipe", "{\"recipeId\":" + recipe("truita-patates") + "}");
-		long eggs = ingredient("egg");
-		assertThat(put("/api/pantry/" + eggs, "{\"quantity\":100}")).hasStatus(204);
 
 		assertThat(post("/api/weeks/" + f.weekId + "/confirm", "")).hasStatusOk()
 				.bodyJson().extractingPath("$.status").isEqualTo("CONFIRMED");
-
-		// Two truites for 2 diners each: 6 eggs per 4 servings → 3 eggs per meal → 360 g.
-		// 100 g at home → buy 260 g → 1 dozen (720 g), 460 g left over.
-		MvcTestResult list = mvc.get().uri("/api/weeks/" + f.weekId + "/shopping-list").exchange();
-		assertThat(list).hasStatusOk();
-		Map<String, Object> egg = JsonPath.<List<Map<String, Object>>>read(body(list),
-				"$.aisles[*].items[?(@.ingredientId == " + eggs + ")]").getFirst();
-		assertThat(((Number) egg.get("required")).doubleValue()).isEqualTo(360.0);
-		assertThat(((Number) egg.get("fromPantry")).doubleValue()).isEqualTo(100.0);
-		assertThat(egg.get("packages")).isEqualTo(1);
-		List<String> staples = JsonPath.read(body(list), "$.staples");
-		assertThat(staples).contains("Oli d'oliva verge extra", "Sal");
-		List<String> onTheList = JsonPath.read(body(list), "$.aisles[*].items[*].name");
-		assertThat(onTheList).doesNotContain("Oli d'oliva verge extra", "Sal");
-
-		BigDecimalAssert.isEqualTo(jdbc.queryForObject(
-				"SELECT quantity FROM pantry_item WHERE ingredient_id = ?", java.math.BigDecimal.class, eggs), 460);
-
-		long itemId = ((Number) egg.get("id")).longValue();
-		assertThat(patch("/api/weeks/" + f.weekId + "/shopping-list/items/" + itemId, "{\"checked\":true}"))
-				.hasStatusOk();
 
 		assertThat(put(mealUri(f, f.lunchId) + "/recipe", "{\"recipeId\":null}")).hasStatus(409)
 				.bodyJson().extractingPath("$.code").isEqualTo("WEEK_CONFIRMED");
 	}
 
 	@Test
-	void aConfirmedWeekCanGoBackToDraftAndThePantryIsRestored() {
+	void aConfirmedWeekCanGoBackToDraft() {
 		Fixture f = weekWithOneLunchboxLunchAndOneDinner();
 		put(mealUri(f, f.lunchId) + "/recipe", "{\"recipeId\":" + recipe("truita-patates") + "}");
 		put(mealUri(f, f.dinnerId) + "/recipe", "{\"recipeId\":" + recipe("truita-patates") + "}");
-		long eggs = ingredient("egg");
-		long rice = ingredient("rice");
-		put("/api/pantry/" + eggs, "{\"quantity\":100}");
 		assertThat(post("/api/weeks/" + f.weekId + "/confirm", "")).hasStatusOk();
-		// After confirming, the family adds rice by hand: that must survive going back to draft.
-		put("/api/pantry/" + rice, "{\"quantity\":500}");
 
 		MvcTestResult reopened = post("/api/weeks/" + f.weekId + "/reopen", "");
 
 		assertThat(reopened).hasStatusOk().bodyJson().extractingPath("$.status").isEqualTo("DRAFT");
-		assertThat(pantryQuantity(eggs)).isEqualByComparingTo("100");
-		assertThat(pantryQuantity(rice)).isEqualByComparingTo("500");
-		assertThat(jdbc.queryForObject("SELECT count(*) FROM pantry_item", Long.class)).isEqualTo(2);
-		assertThat(mvc.get().uri("/api/weeks/" + f.weekId + "/shopping-list").exchange()).hasStatus(404);
 		assertThat(put(mealUri(f, f.lunchId) + "/recipe", "{\"recipeId\":null}")).hasStatusOk();
 		assertThat(post("/api/weeks/" + f.weekId + "/reopen", "")).hasStatus(409)
 				.bodyJson().extractingPath("$.code").isEqualTo("WEEK_NOT_CONFIRMED");
-	}
-
-	@Test
-	void aWeekCannotGoBackToDraftWhileALaterWeekIsConfirmed() {
-		Fixture f = weekWithOneLunchboxLunchAndOneDinner();
-		put(mealUri(f, f.lunchId) + "/recipe", "{\"recipeId\":" + recipe("truita-patates") + "}");
-		put(mealUri(f, f.dinnerId) + "/recipe", "{\"recipeId\":" + recipe("truita-patates") + "}");
-		post("/api/weeks/" + f.weekId + "/confirm", "");
-		long nextWeek = id(post("/api/weeks", "{\"weekStart\":\"2026-10-19\"}"));
-		put("/api/weeks/" + nextWeek + "/meals", """
-				{"meals":[{"date":"2026-10-19","slot":"LUNCH","extraServings":0,
-				  "attendees":[{"memberId":%d,"location":"HOME"}]}]}""".formatted(f.anna));
-		long meal = ((Number) JsonPath.read(body(mvc.get().uri("/api/weeks/" + nextWeek).exchange()), "$.meals[0].id"))
-				.longValue();
-		put("/api/weeks/" + nextWeek + "/meals/" + meal + "/recipe", "{\"recipeId\":" + recipe("empedrat") + "}");
-		assertThat(post("/api/weeks/" + nextWeek + "/confirm", "")).hasStatusOk();
-
-		assertThat(post("/api/weeks/" + f.weekId + "/reopen", "")).hasStatus(409)
-				.bodyJson().extractingPath("$.code").isEqualTo("LATER_WEEK_CONFIRMED");
-		assertThat(post("/api/weeks/" + nextWeek + "/reopen", "")).hasStatusOk();
-		assertThat(post("/api/weeks/" + f.weekId + "/reopen", "")).hasStatusOk();
 	}
 
 	@Test
@@ -276,23 +228,6 @@ class WeekFlowIT {
 		assertThat(copied).hasStatusOk();
 		assertThat(JsonPath.<Object>read(body(copied), "$.meals[1].recipe")).isNull();
 		assertThat(JsonPath.<String>read(body(copied), "$.meals[1].emptyReason")).contains("Anna");
-	}
-
-	@Test
-	void thePantryCanBeEmptied() {
-		setUpHousehold();
-		put("/api/pantry/" + ingredient("egg"), "{\"quantity\":300}");
-		put("/api/pantry/" + ingredient("rice"), "{\"quantity\":500}");
-
-		assertThat(mvc.delete().uri("/api/pantry").exchange()).hasStatus(204);
-
-		assertThat(mvc.get().uri("/api/pantry").exchange()).hasStatusOk()
-				.bodyJson().extractingPath("$.length()").isEqualTo(0);
-	}
-
-	private java.math.BigDecimal pantryQuantity(long ingredientId) {
-		return jdbc.queryForObject("SELECT quantity FROM pantry_item WHERE ingredient_id = ?",
-				java.math.BigDecimal.class, ingredientId);
 	}
 
 	@Test
@@ -413,10 +348,6 @@ class WeekFlowIT {
 		return jdbc.queryForObject("SELECT id FROM recipe WHERE code = ?", Long.class, code);
 	}
 
-	private long ingredient(String code) {
-		return jdbc.queryForObject("SELECT id FROM ingredient WHERE code = ?", Long.class, code);
-	}
-
 	private MvcTestResult post(String uri, String json) {
 		return mvc.post().uri(uri).contentType(MediaType.APPLICATION_JSON).content(json).exchange();
 	}
@@ -438,13 +369,6 @@ class WeekFlowIT {
 			return result.getResponse().getContentAsString(java.nio.charset.StandardCharsets.UTF_8);
 		} catch (java.io.UnsupportedEncodingException e) {
 			throw new IllegalStateException(e);
-		}
-	}
-
-	private static final class BigDecimalAssert {
-
-		static void isEqualTo(java.math.BigDecimal actual, int expected) {
-			assertThat(actual).isEqualByComparingTo(java.math.BigDecimal.valueOf(expected));
 		}
 	}
 }

@@ -7,12 +7,10 @@ import type {
   MealConfigInput,
   Member,
   MemberInput,
-  PantryItem,
   Protein,
   RecipeDetail,
   RecipeInput,
   RecipeSummary,
-  ShoppingList,
   Week,
   WeekSummary,
 } from './types'
@@ -24,8 +22,6 @@ export const keys = {
   weeks: ['weeks'] as const,
   week: (id: number) => ['weeks', id] as const,
   allowedRecipes: (weekId: number, mealId: number) => ['weeks', weekId, 'meals', mealId, 'allowed'] as const,
-  shoppingList: (weekId: number) => ['shopping', weekId] as const,
-  pantry: ['pantry'] as const,
   recipes: ['recipes'] as const,
   proteins: ['proteins'] as const,
   recipe: (id: number) => ['recipes', id] as const,
@@ -166,9 +162,9 @@ export function useMealActions(weekId: number) {
               ...previous,
               meals: previous.meals.map((m) =>
                 m.id === mealIdA
-                  ? { ...m, recipe: b.recipe, locked: b.locked, emptyReason: null, notes: [] }
+                  ? { ...m, recipe: b.recipe, locked: b.locked, emptyReason: null }
                   : m.id === mealIdB
-                    ? { ...m, recipe: a.recipe, locked: a.locked, emptyReason: null, notes: [] }
+                    ? { ...m, recipe: a.recipe, locked: a.locked, emptyReason: null }
                     : m,
               ),
             })
@@ -187,19 +183,11 @@ export function useMealActions(weekId: number) {
     }),
     reopen: useMutation({
       mutationFn: () => api.post<Week>(`/api/weeks/${weekId}/reopen`),
-      onSuccess: (week) => {
-        onSuccess(week)
-        client.invalidateQueries({ queryKey: keys.pantry })
-        client.removeQueries({ queryKey: keys.shoppingList(weekId) })
-      },
+      onSuccess,
     }),
     confirm: useMutation({
       mutationFn: () => api.post<Week>(`/api/weeks/${weekId}/confirm`),
-      onSuccess: (week) => {
-        onSuccess(week)
-        client.invalidateQueries({ queryKey: keys.pantry })
-        client.invalidateQueries({ queryKey: keys.shoppingList(weekId) })
-      },
+      onSuccess,
     }),
   }
 }
@@ -209,53 +197,6 @@ export function useAllowedRecipes(weekId: number, mealId: number | null) {
     queryKey: keys.allowedRecipes(weekId, mealId ?? 0),
     queryFn: () => api.get<RecipeSummary[]>(`/api/weeks/${weekId}/meals/${mealId}/allowed-recipes`),
     enabled: mealId !== null,
-  })
-}
-
-export function useShoppingList(weekId: number, enabled: boolean) {
-  return useQuery({
-    queryKey: keys.shoppingList(weekId),
-    queryFn: () => api.get<ShoppingList>(`/api/weeks/${weekId}/shopping-list`),
-    enabled,
-  })
-}
-
-export function useCheckItem(weekId: number) {
-  const client = useQueryClient()
-  return useMutation({
-    mutationFn: ({ itemId, checked }: { itemId: number; checked: boolean }) =>
-      api.patch<ShoppingList>(`/api/weeks/${weekId}/shopping-list/items/${itemId}`, { checked }),
-    onMutate: async ({ itemId, checked }) => {
-      await client.cancelQueries({ queryKey: keys.shoppingList(weekId) })
-      const previous = client.getQueryData<ShoppingList>(keys.shoppingList(weekId))
-      if (previous) {
-        client.setQueryData<ShoppingList>(keys.shoppingList(weekId), {
-          ...previous,
-          aisles: previous.aisles.map((a) => ({
-            ...a,
-            items: a.items.map((i) => (i.id === itemId ? { ...i, checked } : i)),
-          })),
-        })
-      }
-      return { previous }
-    },
-    onError: (_error, _vars, context) => {
-      if (context?.previous) client.setQueryData(keys.shoppingList(weekId), context.previous)
-    },
-    onSuccess: (list) => client.setQueryData(keys.shoppingList(weekId), list),
-  })
-}
-
-export function usePantry() {
-  return useQuery({ queryKey: keys.pantry, queryFn: () => api.get<PantryItem[]>('/api/pantry') })
-}
-
-export function useSetPantry() {
-  const client = useQueryClient()
-  return useMutation({
-    mutationFn: ({ ingredientId, quantity }: { ingredientId: number; quantity: number }) =>
-      api.put<void>(`/api/pantry/${ingredientId}`, { quantity }),
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.pantry }),
   })
 }
 
@@ -342,13 +283,5 @@ export function useCopyWeek(sourceWeekId: number) {
       client.setQueryData(keys.week(week.id), week)
       client.invalidateQueries({ queryKey: keys.weeks })
     },
-  })
-}
-
-export function useClearPantry() {
-  const client = useQueryClient()
-  return useMutation({
-    mutationFn: () => api.delete('/api/pantry'),
-    onSuccess: () => client.invalidateQueries({ queryKey: keys.pantry }),
   })
 }

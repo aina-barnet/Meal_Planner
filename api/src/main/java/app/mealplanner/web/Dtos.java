@@ -3,16 +3,11 @@ package app.mealplanner.web;
 import app.mealplanner.application.CatalogueService.RecipeView;
 import app.mealplanner.application.WeekPlanService.MealDetail;
 import app.mealplanner.application.WeekPlanService.WeekDetail;
-import app.mealplanner.domain.catalogue.Aisle;
 import app.mealplanner.domain.catalogue.Allergen;
 import app.mealplanner.domain.catalogue.CanonicalUnit;
-import app.mealplanner.domain.catalogue.Cuisine;
 import app.mealplanner.domain.catalogue.DietType;
 import app.mealplanner.domain.catalogue.Ingredient;
 import app.mealplanner.domain.catalogue.IngredientCategory;
-import app.mealplanner.domain.catalogue.LunchboxServing;
-import app.mealplanner.domain.catalogue.ScalingMode;
-import app.mealplanner.domain.catalogue.Season;
 import app.mealplanner.domain.catalogue.Unit;
 import app.mealplanner.domain.catalogue.UnitConverter;
 import app.mealplanner.domain.planning.DinerLocation;
@@ -23,7 +18,6 @@ import app.mealplanner.persistence.MemberEntity;
 import app.mealplanner.persistence.WeekPlanEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -64,26 +58,21 @@ public final class Dtos {
 	public record MemberRequest(
 			@NotBlank @Size(max = 80) String name,
 			@NotNull DietType dietType,
-			@Size(max = 500) String dietNotes,
-			List<@Valid AllergenEntry> allergens,
-			List<@NotNull Long> dislikedIngredientIds) {
+			List<@Valid AllergenEntry> allergens) {
 	}
 
 	public record MemberResponse(
 			long id,
 			String name,
 			DietType dietType,
-			String dietNotes,
-			List<AllergenEntry> allergens,
-			List<Long> dislikedIngredientIds) {
+			List<AllergenEntry> allergens) {
 
 		static MemberResponse of(MemberEntity m) {
-			return new MemberResponse(m.getId(), m.getName(), m.getDietType(), m.getDietNotes(),
+			return new MemberResponse(m.getId(), m.getName(), m.getDietType(),
 					m.getAllergens().entrySet().stream()
 							.map(e -> new AllergenEntry(e.getKey(), e.getValue()))
 							.sorted(Comparator.comparing(AllergenEntry::allergen))
-							.toList(),
-					m.getDislikedIngredientIds().stream().sorted().toList());
+							.toList());
 		}
 	}
 
@@ -94,18 +83,14 @@ public final class Dtos {
 			String name,
 			IngredientCategory category,
 			CanonicalUnit canonicalUnit,
-			BigDecimal packageSize,
-			Aisle aisle,
-			boolean pantryStaple,
 			Set<Allergen> allergens,
 			@Schema(description = "Canonical units (g or ml) per one recipe unit, e.g. UNIT: 60 for an egg")
 			java.util.Map<Unit, BigDecimal> conversions,
 			@Schema(description = "Added by the family; only these can be edited") boolean custom) {
 
 		static IngredientResponse of(Ingredient i, boolean custom) {
-			return new IngredientResponse(i.id(), i.name(), i.category(), i.canonicalUnit(), i.packageSize(),
-					i.aisle(), i.pantryStaple(), new TreeSet<>(i.allergens()), new java.util.TreeMap<>(i.conversions()),
-					custom);
+			return new IngredientResponse(i.id(), i.name(), i.category(), i.canonicalUnit(), new TreeSet<>(i.allergens()),
+					new java.util.TreeMap<>(i.conversions()), custom);
 		}
 	}
 
@@ -113,30 +98,22 @@ public final class Dtos {
 			@NotBlank @Size(max = 120) String name,
 			@NotNull IngredientCategory category,
 			@NotNull CanonicalUnit canonicalUnit,
-			@NotNull @DecimalMin("0.01") @DecimalMax("100000") BigDecimal packageSize,
-			@NotNull Aisle aisle,
 			Set<Allergen> allergens,
-			java.util.Map<Unit, @NotNull @DecimalMin("0.001") BigDecimal> conversions,
-			boolean pantryStaple) {
+			java.util.Map<Unit, @NotNull @DecimalMin("0.001") BigDecimal> conversions) {
 	}
 
 	public record RecipeLineRequest(
 			@NotNull Long ingredientId,
 			@NotNull @DecimalMin("0.001") BigDecimal quantity,
-			@NotNull Unit unit,
-			@NotNull ScalingMode scalingMode) {
+			@NotNull Unit unit) {
 	}
 
 	public record RecipeRequest(
 			@NotBlank @Size(max = 160) String name,
-			@Size(max = 500) String description,
 			@Min(1) @Max(20) int baseServings,
 			@Min(1) @Max(600) int prepMinutes,
 			@Schema(description = "Code of a protein type, see /api/proteins") @NotBlank String proteinType,
-			@NotNull Cuisine cuisine,
-			@NotEmpty Set<@NotNull Season> seasons,
-			boolean portable,
-			@Schema(description = "Required when portable") LunchboxServing lunchboxServing,
+			@Schema(description = "Also works in a lunchbox; every dish can be eaten at home") boolean portable,
 			@NotEmpty List<@Valid @NotNull RecipeLineRequest> ingredients,
 			@NotEmpty List<@NotBlank @Size(max = 1000) String> steps) {
 	}
@@ -158,14 +135,10 @@ public final class Dtos {
 			long id,
 			String code,
 			String name,
-			String description,
 			int baseServings,
 			int prepMinutes,
 			@Schema(description = "Code of a protein type, see /api/proteins") String proteinType,
-			Cuisine cuisine,
-			Set<Season> seasons,
 			boolean portable,
-			LunchboxServing lunchboxServing,
 			Set<Allergen> allergens,
 			Set<DietType> diets,
 			@Schema(description = "Added by the family") boolean custom,
@@ -173,8 +146,8 @@ public final class Dtos {
 
 		static RecipeSummary of(RecipeView v) {
 			var r = v.recipe();
-			return new RecipeSummary(r.id(), v.code(), r.name(), v.description(), r.baseServings(), r.prepMinutes(),
-					r.proteinType().code(), r.cuisine(), new TreeSet<>(r.seasons()), r.portable(), r.lunchboxServing(),
+			return new RecipeSummary(r.id(), v.code(), r.name(), r.baseServings(), r.prepMinutes(),
+					r.proteinType().code(), r.portable(),
 					new TreeSet<>(v.allergens()), new TreeSet<>(v.diets()), v.custom(), v.hidden());
 		}
 	}
@@ -184,10 +157,8 @@ public final class Dtos {
 			String name,
 			BigDecimal quantity,
 			Unit unit,
-			ScalingMode scalingMode,
 			BigDecimal canonicalQuantity,
-			CanonicalUnit canonicalUnit,
-			boolean pantryStaple) {
+			CanonicalUnit canonicalUnit) {
 	}
 
 	public record RecipeDetail(RecipeSummary summary, List<RecipeIngredientResponse> ingredients, List<String> steps) {
@@ -196,10 +167,10 @@ public final class Dtos {
 			return new RecipeDetail(RecipeSummary.of(v),
 					v.recipe().ingredients().stream()
 							.map(line -> new RecipeIngredientResponse(line.ingredient().id(), line.ingredient().name(),
-									line.quantity(), line.unit(), line.scalingMode(),
+									line.quantity(), line.unit(),
 									UnitConverter.toCanonical(line.ingredient(), line.quantity(), line.unit())
 											.setScale(1, RoundingMode.HALF_UP),
-									line.ingredient().canonicalUnit(), line.ingredient().pantryStaple()))
+									line.ingredient().canonicalUnit()))
 							.toList(),
 					v.steps());
 		}
@@ -255,8 +226,7 @@ public final class Dtos {
 			int totalServings,
 			boolean locked,
 			String emptyReason,
-			RecipeSummary recipe,
-			@Schema(description = "Soft warnings, such as disliked ingredients") List<String> notes) {
+			RecipeSummary recipe) {
 
 		static MealResponse of(MealDetail d) {
 			var m = d.meal();
@@ -267,7 +237,7 @@ public final class Dtos {
 							.sorted(Comparator.comparing(AttendeeDto::memberId))
 							.toList(),
 					d.dinersAtHome(), d.dinersTakeaway(), m.getExtraServings(), d.totalServings(), m.isLocked(),
-					m.getEmptyReason(), recipe, d.notes());
+					m.getEmptyReason(), recipe);
 		}
 	}
 
@@ -279,39 +249,5 @@ public final class Dtos {
 			return new WeekResponse(w.getId(), w.getWeekStart(), w.getStatus(), w.getConfirmedAt(),
 					d.meals().stream().map(MealResponse::of).toList());
 		}
-	}
-
-	// ------------------------------------------------------------- shopping & pantry
-
-	public record ShoppingItemResponse(
-			long id,
-			long ingredientId,
-			String name,
-			CanonicalUnit canonicalUnit,
-			BigDecimal required,
-			BigDecimal fromPantry,
-			BigDecimal toBuy,
-			int packages,
-			BigDecimal packageSize,
-			BigDecimal leftover,
-			boolean coveredByPantry,
-			boolean checked) {
-	}
-
-	public record AisleResponse(Aisle aisle, List<ShoppingItemResponse> items) {
-	}
-
-	public record ShoppingListResponse(long weekId, Instant generatedAt, List<AisleResponse> aisles,
-			@Schema(description = "Pantry staples the week uses: assumed at home, not bought") List<String> staples) {
-	}
-
-	public record CheckItemRequest(@NotNull Boolean checked) {
-	}
-
-	public record PantryItemResponse(long ingredientId, String name, CanonicalUnit canonicalUnit, Aisle aisle,
-			BigDecimal quantity) {
-	}
-
-	public record PantryRequest(@NotNull @DecimalMin("0") @DecimalMax("1000000") BigDecimal quantity) {
 	}
 }

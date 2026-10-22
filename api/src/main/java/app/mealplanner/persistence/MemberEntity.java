@@ -18,9 +18,7 @@ import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.MapKeyEnumerated;
 import jakarta.persistence.Table;
 import java.util.EnumMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 
 @Entity
 @Table(name = "member")
@@ -40,9 +38,6 @@ public class MemberEntity {
 	@Column(name = "diet_type")
 	private DietType dietType;
 
-	@Column(name = "diet_notes")
-	private String dietNotes;
-
 	@ElementCollection(fetch = FetchType.EAGER)
 	@CollectionTable(name = "member_allergen", joinColumns = @JoinColumn(name = "member_id"))
 	@MapKeyColumn(name = "allergen")
@@ -50,11 +45,6 @@ public class MemberEntity {
 	@Column(name = "kind")
 	@Enumerated(EnumType.STRING)
 	private Map<Allergen, AllergenKind> allergens = new EnumMap<>(Allergen.class);
-
-	@ElementCollection(fetch = FetchType.EAGER)
-	@CollectionTable(name = "member_dislike", joinColumns = @JoinColumn(name = "member_id"))
-	@Column(name = "ingredient_id")
-	private Set<Long> dislikedIngredientIds = new HashSet<>();
 
 	protected MemberEntity() {
 	}
@@ -87,19 +77,7 @@ public class MemberEntity {
 		this.dietType = dietType;
 	}
 
-	public String getDietNotes() {
-		return dietNotes;
-	}
-
-	public void setDietNotes(String dietNotes) {
-		this.dietNotes = dietNotes;
-	}
-
 	public Map<Allergen, AllergenKind> getAllergens() {
 		return allergens;
-	}
-
-	public Set<Long> getDislikedIngredientIds() {
-		return dislikedIngredientIds;
 	}
 }

@@ -15,13 +15,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError } from '../api/client'
 import { useMealActions, useMembers, useWeek } from '../api/hooks'
 import type { Meal, MealSlot, Member, Week } from '../api/types'
-import { SLOT, addDays, formatDayMonth, formatWeekRange, formatWeekday } from '../labels'
-import { navigate } from '../router'
-import { PrintButton } from '../print/PrintButton'
+import { SLOT, WEEK_DAYS, addDays, formatDayMonth, formatWeekRange, formatWeekday } from '../labels'
+import { PrintButton, RecipePrint } from '../print/PrintButton'
 import { useProteinName } from '../proteins'
 import { confirmReopen } from '../reopen'
 import { swapViolations } from '../rules'
-import { Button, ErrorBox, HomeIcon, LunchboxIcon, Spinner } from '../ui'
+import { Button, ErrorBox, HomeIcon, LunchboxIcon, PrintIcon, Spinner } from '../ui'
 import { CopyWeekDialog } from './CopyWeekDialog'
 import { RecipePicker } from './RecipePicker'
 
@@ -41,7 +40,7 @@ function Board({ week, members }: { week: Week; members: Member[] }) {
   const readOnly = week.status === 'CONFIRMED'
   const membersById = useMemo(() => new Map(members.map((m) => [m.id, m])), [members])
   const mealsById = useMemo(() => new Map(week.meals.map((m) => [m.id, m])), [week.meals])
-  const days = useMemo(() => Array.from({ length: 7 }, (_, i) => addDays(week.weekStart, i)), [week.weekStart])
+  const days = useMemo(() => Array.from({ length: WEEK_DAYS }, (_, i) => addDays(week.weekStart, i)), [week.weekStart])
   const [dragging, setDragging] = useState<Meal | null>(null)
   const [picking, setPicking] = useState<Meal | null>(null)
   const [copying, setCopying] = useState(false)
@@ -108,7 +107,6 @@ function Board({ week, members }: { week: Week; members: Member[] }) {
             </Button>
             <Button variant="secondary" onClick={() => setCopying(true)}>Copia…</Button>
             <PrintButton weekId={week.id} />
-            <Button onClick={() => navigate({ screen: 'shopping', weekId: week.id })}>Llista de la compra →</Button>
           </div>
         ) : (
           <div className="flex items-center gap-2">
@@ -128,14 +126,9 @@ function Board({ week, members }: { week: Week; members: Member[] }) {
             <Button
               disabled={busy || assigned < week.meals.length || week.meals.length === 0}
               title={assigned < week.meals.length ? 'Tots els àpats han de tenir plat' : undefined}
-              onClick={() =>
-                actions.confirm.mutate(undefined, {
-                  onSuccess: () => navigate({ screen: 'shopping', weekId: week.id }),
-                  onError: showError,
-                })
-              }
+              onClick={() => actions.confirm.mutate(undefined, { onError: showError })}
             >
-              {actions.confirm.isPending ? 'Confirmant…' : 'Confirma i fes la llista →'}
+              {actions.confirm.isPending ? 'Confirmant…' : '✓ Confirma el menú'}
             </Button>
           </div>
         )}
@@ -150,7 +143,7 @@ function Board({ week, members }: { week: Week; members: Member[] }) {
       )}
 
       <DndContext sensors={sensors} collisionDetection={pointerWithin} onDragStart={onDragStart} onDragEnd={onDragEnd} onDragCancel={() => setDragging(null)}>
-        <div className="grid grid-cols-[4.5rem_repeat(7,minmax(0,1fr))] gap-2">
+        <div className="grid grid-cols-[4.5rem_repeat(5,minmax(0,1fr))] gap-2">
           <div />
           {days.map((date) => (
             <div key={date} className="px-1">
@@ -378,6 +371,8 @@ function DraggableDish({
   onToggleLock: () => void
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({ id: meal.id, disabled: readOnly })
+  const [printing, setPrinting] = useState(false)
+  const donePrinting = useCallback(() => setPrinting(false), [])
   return (
     <div
       ref={setNodeRef}
@@ -388,21 +383,27 @@ function DraggableDish({
       <DishCardBody
         meal={meal}
         actions={
-          readOnly ? null : (
-            <div className="mt-2 flex items-center gap-0.5 border-t border-stone-100 pt-1.5">
-              <IconButton title={meal.locked ? 'Desbloqueja' : 'Bloqueja (no es canviarà en regenerar)'} onClick={onToggleLock} active={meal.locked}>
-                {meal.locked ? '🔒' : '🔓'}
-              </IconButton>
-              <IconButton title="Canvia el plat" onClick={onPick}>
-                ⇄
-              </IconButton>
-              <IconButton title="Treu el plat" onClick={onClear}>
-                ✕
-              </IconButton>
-            </div>
-          )
+          <div className="mt-2 flex items-center gap-0.5 border-t border-stone-100 pt-1.5">
+            {!readOnly && (
+              <>
+                <IconButton title={meal.locked ? 'Desbloqueja' : 'Bloqueja (no es canviarà en regenerar)'} onClick={onToggleLock} active={meal.locked}>
+                  {meal.locked ? '🔒' : '🔓'}
+                </IconButton>
+                <IconButton title="Canvia el plat" onClick={onPick}>
+                  ⇄
+                </IconButton>
+                <IconButton title="Treu el plat" onClick={onClear}>
+                  ✕
+                </IconButton>
+              </>
+            )}
+            <IconButton title="Imprimeix la recepta" onClick={() => setPrinting(true)}>
+              <PrintIcon className="size-3.5" />
+            </IconButton>
+          </div>
         }
       />
+      {printing && <RecipePrint recipeId={meal.recipe!.id} onDone={donePrinting} />}
     </div>
   )
 }
@@ -427,23 +428,14 @@ function DishCardBody({
       <p className="text-sm font-medium leading-snug hyphens-auto break-words text-stone-900">{recipe.name}</p>
       <p className="mt-0.5 flex flex-wrap items-center gap-x-1 text-[0.6875rem] text-stone-500">
         {recipe.portable && (
-          <span
-            title={recipe.lunchboxServing === 'COLD' ? 'Apte per a carmanyola · fred' : 'Apte per a carmanyola · escalfar'}
-            className="inline-flex items-center gap-0.5 rounded bg-terracotta-100 px-1 text-terracotta-700"
-          >
+          <span title="Apte per a carmanyola" className="inline-flex items-center rounded bg-terracotta-100 px-1 text-terracotta-700">
             <LunchboxIcon className="size-3" />
-            {recipe.lunchboxServing === 'COLD' ? 'fred' : 'escalfar'}
           </span>
         )}
         <span>
           {proteinName(recipe.proteinType)} · {recipe.prepMinutes} min
         </span>
       </p>
-      {meal.notes.length > 0 && (
-        <p className="mt-auto pt-2 text-[0.6875rem] leading-snug text-amber-700" title={meal.notes.join('\n')}>
-          ⚠ {meal.notes[0]}
-        </p>
-      )}
       {actions}
     </div>
   )

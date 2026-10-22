@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSaveIngredient } from '../api/hooks'
-import type { Aisle, Allergen, CanonicalUnit, Ingredient, IngredientCategory, IngredientInput, Unit } from '../api/types'
-import { AISLE, ALLERGEN, CATEGORY, COUNTABLE_UNITS, UNIT } from '../labels'
+import type { Allergen, CanonicalUnit, Ingredient, IngredientCategory, IngredientInput, Unit } from '../api/types'
+import { ALLERGEN, CATEGORY, COUNTABLE_UNITS, UNIT } from '../labels'
 import { Button, ErrorBox, Field, inputClass } from '../ui'
 
 /** Creates an ingredient of the family's own, or edits one they added. */
@@ -23,21 +23,15 @@ export function IngredientModal({
           name: initial.name,
           category: initial.category,
           canonicalUnit: initial.canonicalUnit,
-          packageSize: initial.packageSize,
-          aisle: initial.aisle,
           allergens: initial.allergens,
           conversions: initial.conversions,
-          pantryStaple: initial.pantryStaple,
         }
       : {
           name: initialName,
           category: 'VEGETABLE',
           canonicalUnit: 'G',
-          packageSize: 500,
-          aisle: 'PRODUCE',
           allergens: [],
           conversions: {},
-          pantryStaple: false,
         },
   )
   const set = <K extends keyof IngredientInput>(key: K, value: IngredientInput[K]) => setForm((f) => ({ ...f, [key]: value }))
@@ -50,19 +44,6 @@ export function IngredientModal({
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
-
-  const number = (key: 'packageSize', label: string, hint?: string) => (
-    <Field label={label} hint={hint}>
-      <input
-        type="number"
-        min={0}
-        step="any"
-        className={inputClass}
-        value={Number.isFinite(form[key]) ? form[key] : ''}
-        onChange={(e) => set(key, Number(e.target.value))}
-      />
-    </Field>
-  )
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 p-8" onClick={onClose}>
@@ -97,35 +78,23 @@ export function IngredientModal({
             </Field>
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Es mesura en">
-              <div className="flex gap-2">
-                {(['G', 'ML'] as CanonicalUnit[]).map((u) => (
-                  <button
-                    key={u}
-                    type="button"
-                    disabled={initial !== undefined}
-                    onClick={() => set('canonicalUnit', u)}
-                    className={`flex-1 rounded-lg px-3 py-2 text-sm ring-1 disabled:opacity-60 ${
-                      form.canonicalUnit === u ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white ring-stone-300'
-                    }`}
-                  >
-                    {u === 'G' ? 'grams' : 'mil·lilitres'}
-                  </button>
-                ))}
-              </div>
-            </Field>
-            {number('packageSize', `Paquet (${base})`, 'El que compreu a la botiga')}
-            <Field label="Passadís">
-              <select className={inputClass} value={form.aisle} onChange={(e) => set('aisle', e.target.value as Aisle)}>
-                {(Object.keys(AISLE) as Aisle[]).map((a) => (
-                  <option key={a} value={a}>
-                    {AISLE[a]}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
+          <Field label="Es mesura en">
+            <div className="flex gap-2">
+              {(['G', 'ML'] as CanonicalUnit[]).map((u) => (
+                <button
+                  key={u}
+                  type="button"
+                  disabled={initial !== undefined}
+                  onClick={() => set('canonicalUnit', u)}
+                  className={`flex-1 rounded-lg px-3 py-2 text-sm ring-1 disabled:opacity-60 ${
+                    form.canonicalUnit === u ? 'bg-brand-600 text-white ring-brand-600' : 'bg-white ring-stone-300'
+                  }`}
+                >
+                  {u === 'G' ? 'grams' : 'mil·lilitres'}
+                </button>
+              ))}
+            </div>
+          </Field>
 
           <Field label="Al·lèrgens">
             <div className="flex flex-wrap gap-1.5">
@@ -191,19 +160,6 @@ export function IngredientModal({
             </div>
           </Field>
 
-          <label className="flex items-start gap-2 text-sm">
-            <input
-              type="checkbox"
-              className="mt-0.5 accent-brand-700"
-              checked={form.pantryStaple}
-              onChange={(e) => set('pantryStaple', e.target.checked)}
-            />
-            <span>
-              <strong className="font-medium">Bàsic de rebost</strong>
-              <span className="block text-xs text-stone-500">Sempre en teniu (com l'oli o la sal): no surt a la llista de la compra.</span>
-            </span>
-          </label>
-
           <ErrorBox error={save.error} />
         </div>
 
@@ -213,7 +169,7 @@ export function IngredientModal({
           </Button>
           <Button
             type="submit"
-            disabled={!form.name.trim() || !(form.packageSize > 0) || conversions.some(([, f]) => !(f > 0)) || save.isPending}
+            disabled={!form.name.trim() || conversions.some(([, f]) => !(f > 0)) || save.isPending}
           >
             {save.isPending ? 'Desant…' : 'Desa l’ingredient'}
           </Button>

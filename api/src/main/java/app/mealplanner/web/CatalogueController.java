@@ -4,9 +4,7 @@ import app.mealplanner.application.CatalogueEditor;
 import app.mealplanner.application.CatalogueService;
 import app.mealplanner.application.CatalogueService.RecipeView;
 import app.mealplanner.domain.catalogue.Allergen;
-import app.mealplanner.domain.catalogue.Cuisine;
 import app.mealplanner.domain.catalogue.DietType;
-import app.mealplanner.domain.catalogue.Season;
 import app.mealplanner.web.Dtos.HideRecipeRequest;
 import app.mealplanner.web.Dtos.IngredientRequest;
 import app.mealplanner.web.Dtos.IngredientResponse;
@@ -71,10 +69,8 @@ public class CatalogueController {
 	@GetMapping("/recipes")
 	@Operation(summary = "Browse and filter the recipe catalogue")
 	public List<RecipeSummary> recipes(
-			@Parameter(description = "Text search on name and description, accent-insensitive") @RequestParam(required = false) String q,
+			@Parameter(description = "Text search on the name, accent-insensitive") @RequestParam(required = false) String q,
 			@RequestParam(required = false) String proteinType,
-			@RequestParam(required = false) Cuisine cuisine,
-			@RequestParam(required = false) Season season,
 			@Parameter(description = "Only lunchbox-friendly recipes") @RequestParam(required = false) Boolean portable,
 			@Parameter(description = "Only recipes compatible with this diet") @RequestParam(required = false) DietType diet,
 			@Parameter(description = "Exclude recipes containing any of these") @RequestParam(required = false) Set<Allergen> excludeAllergens,
@@ -84,17 +80,10 @@ public class CatalogueController {
 		Predicate<RecipeView> filter = view -> true;
 		if (q != null && !q.isBlank()) {
 			String needle = fold(q);
-			filter = filter.and(v -> fold(v.recipe().name()).contains(needle)
-					|| (v.description() != null && fold(v.description()).contains(needle)));
+			filter = filter.and(v -> fold(v.recipe().name()).contains(needle));
 		}
 		if (proteinType != null) {
 			filter = filter.and(v -> v.recipe().proteinType().code().equals(proteinType));
-		}
-		if (cuisine != null) {
-			filter = filter.and(v -> v.recipe().cuisine() == cuisine);
-		}
-		if (season != null) {
-			filter = filter.and(v -> v.recipe().seasons().contains(season));
 		}
 		if (portable != null) {
 			filter = filter.and(v -> v.recipe().portable() == portable);
@@ -143,17 +132,16 @@ public class CatalogueController {
 	}
 
 	private static CatalogueEditor.IngredientData data(IngredientRequest r) {
-		return new CatalogueEditor.IngredientData(r.name(), r.category(), r.canonicalUnit(), r.packageSize(), r.aisle(),
+		return new CatalogueEditor.IngredientData(r.name(), r.category(), r.canonicalUnit(),
 				r.allergens() == null ? Set.of() : r.allergens(),
-				r.conversions() == null ? java.util.Map.of() : r.conversions(), r.pantryStaple());
+				r.conversions() == null ? java.util.Map.of() : r.conversions());
 	}
 
 	private static CatalogueEditor.RecipeData data(RecipeRequest r) {
-		return new CatalogueEditor.RecipeData(r.name(), r.description(), r.baseServings(), r.prepMinutes(),
-				new app.mealplanner.domain.catalogue.ProteinType(r.proteinType().strip()), r.cuisine(), r.seasons(),
-				r.portable(), r.lunchboxServing(),
+		return new CatalogueEditor.RecipeData(r.name(), r.baseServings(), r.prepMinutes(),
+				new app.mealplanner.domain.catalogue.ProteinType(r.proteinType().strip()), r.portable(),
 				r.ingredients().stream()
-						.map(l -> new CatalogueEditor.LineData(l.ingredientId(), l.quantity(), l.unit(), l.scalingMode()))
+						.map(l -> new CatalogueEditor.LineData(l.ingredientId(), l.quantity(), l.unit()))
 						.toList(),
 				r.steps());
 	}

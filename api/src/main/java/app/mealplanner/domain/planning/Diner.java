@@ -9,21 +9,18 @@ import java.util.Set;
  * A member eating a particular meal, with the constraints that apply to them.
  *
  * @param allergens          allergies and intolerances; both are hard constraints
- * @param dislikedIngredients ingredient ids the member dislikes; a soft preference
  */
 public record Diner(
 		long memberId,
 		String name,
 		DinerLocation location,
 		DietType diet,
-		Set<Allergen> allergens,
-		Set<Long> dislikedIngredients) {
+		Set<Allergen> allergens) {
 
 	public Diner {
 		Objects.requireNonNull(name, "name");
 		Objects.requireNonNull(location, "location");
 		Objects.requireNonNull(diet, "diet");
 		allergens = Set.copyOf(allergens);
-		dislikedIngredients = Set.copyOf(dislikedIngredients);
 	}
 }

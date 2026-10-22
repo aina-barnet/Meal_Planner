@@ -1,76 +1,50 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useLayoutEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { useShoppingList, useWeek } from '../api/hooks'
+import { useRecipe, useWeek } from '../api/hooks'
 import { Button } from '../ui'
 import { MenuSheet } from './MenuSheet'
-import { ShoppingSheet } from './ShoppingSheet'
+import { RecipeSheet } from './RecipeSheet'
 
-type Mode = 'menu' | 'list'
+type Kind = 'menu' | 'recipe'
 
 /**
  * Paper formats. Sizes in CSS pixels at 96 dpi, for A4 with 10 mm margins. Each sheet is scaled
  * down before printing if needed, so it always fits on a single page.
  */
-const PAGE: Record<Mode, { size: string; widthMm: number; heightPx: number }> = {
+const PAGE: Record<Kind, { size: string; widthMm: number; heightPx: number }> = {
   menu: { size: 'A4 landscape', widthMm: 277, heightPx: (190 * 96) / 25.4 },
-  list: { size: 'A4 portrait', widthMm: 190, heightPx: (277 * 96) / 25.4 },
+  recipe: { size: 'A4 portrait', widthMm: 190, heightPx: (277 * 96) / 25.4 },
 }
 
-/** "Imprimeix ▾": the weekly menu, or the shopping list once the week is confirmed. */
+/** "Imprimeix": the weekly menu as a Monday-to-Friday grid. Recipes print from each dish on the board. */
 export function PrintButton({ weekId, variant = 'secondary' }: { weekId: number; variant?: 'primary' | 'secondary' }) {
-  const [open, setOpen] = useState(false)
-  const [mode, setMode] = useState<Mode | null>(null)
+  const [printing, setPrinting] = useState(false)
   const week = useWeek(weekId)
-  const confirmed = week.data?.status === 'CONFIRMED'
-  const list = useShoppingList(weekId, confirmed)
-  const menuRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const close = (e: MouseEvent) => {
-      if (!menuRef.current?.contains(e.target as Node)) setOpen(false)
-    }
-    window.addEventListener('mousedown', close)
-    return () => window.removeEventListener('mousedown', close)
-  }, [open])
-
-  const choose = (m: Mode) => {
-    setOpen(false)
-    setMode(m)
-  }
+  const done = useCallback(() => setPrinting(false), [])
 
   return (
-    <div ref={menuRef} className="relative print:hidden">
-      <Button variant={variant} onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open}>
-        Imprimeix ▾
+    <div className="print:hidden">
+      <Button variant={variant} disabled={!week.data} onClick={() => setPrinting(true)}
+        title="Graella de dilluns a divendres, amb qui menja a casa, qui s'endú carmanyola i qui és fora">
+        Imprimeix el menú
       </Button>
-      {open && (
-        <div role="menu" className="absolute right-0 z-30 mt-1 w-64 overflow-hidden rounded-xl bg-white text-sm shadow-xl ring-1 ring-stone-200">
-          <MenuItem onClick={() => choose('menu')} title="Menú setmanal" hint="Graella dels 7 dies, apaïsat" />
-          <MenuItem
-            onClick={() => choose('list')}
-            disabled={!confirmed || !list.data}
-            title="Llista de la compra"
-            hint={confirmed ? 'Per passadissos, en una pàgina' : 'Primer cal confirmar el menú'}
-          />
-        </div>
-      )}
-      {mode && week.data && (mode === 'menu' || list.data) && (
-        <PrintJob mode={mode} onDone={() => setMode(null)}>
-          {mode === 'menu' ? <MenuSheet week={week.data} /> : <ShoppingSheet week={week.data} list={list.data!} />}
+      {printing && week.data && (
+        <PrintJob kind="menu" onDone={done}>
+          <MenuSheet week={week.data} />
         </PrintJob>
       )}
     </div>
   )
 }
 
-function MenuItem({ onClick, title, hint, disabled = false }: { onClick: () => void; title: string; hint: string; disabled?: boolean }) {
+/** Loads the full recipe (ingredients and steps), then prints it on its own page. */
+export function RecipePrint({ recipeId, onDone }: { recipeId: number; onDone: () => void }) {
+  const recipe = useRecipe(recipeId)
+  if (!recipe.data) return null
   return (
-    <button type="button" role="menuitem" disabled={disabled} onClick={onClick}
-      className="block w-full px-4 py-2.5 text-left hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent">
-      <span className="block font-medium text-stone-900">{title}</span>
-      <span className="block text-xs text-stone-500">{hint}</span>
-    </button>
+    <PrintJob kind="recipe" onDone={onDone}>
+      <RecipeSheet recipe={recipe.data} />
+    </PrintJob>
   )
 }
 
@@ -78,11 +52,11 @@ function MenuItem({ onClick, title, hint, disabled = false }: { onClick: () => v
  * Renders the sheet outside the app root (which print CSS hides), fits it to one page, prints,
  * and cleans up.
  */
-function PrintJob({ mode, onDone, children }: { mode: Mode; onDone: () => void; children: React.ReactNode }) {
+function PrintJob({ kind, onDone, children }: { kind: Kind; onDone: () => void; children: React.ReactNode }) {
   const sheet = useRef<HTMLDivElement>(null)
 
   useLayoutEffect(() => {
-    const page = PAGE[mode]
+    const page = PAGE[kind]
     const style = document.createElement('style')
     style.textContent = `@page { size: ${page.size}; margin: 10mm; }`
     document.head.appendChild(style)
@@ -109,10 +83,10 @@ function PrintJob({ mode, onDone, children }: { mode: Mode; onDone: () => void; 
       document.body.classList.remove('printing')
       style.remove()
     }
-  }, [mode, onDone])
+  }, [kind, onDone])
 
   return createPortal(
-    <div ref={sheet} className="print-sheet" style={{ width: `${PAGE[mode].widthMm}mm` }}>
+    <div ref={sheet} className="print-sheet" style={{ width: `${PAGE[kind].widthMm}mm` }}>
       {children}
     </div>,
     document.body,

@@ -5,20 +5,15 @@ import static app.mealplanner.domain.Fixtures.POTATO;
 import static app.mealplanner.domain.Fixtures.dec;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import app.mealplanner.domain.catalogue.Aisle;
 import app.mealplanner.domain.catalogue.Allergen;
 import app.mealplanner.domain.catalogue.CanonicalUnit;
-import app.mealplanner.domain.catalogue.Cuisine;
 import app.mealplanner.domain.catalogue.DietType;
 import app.mealplanner.domain.catalogue.Ingredient;
 import app.mealplanner.domain.catalogue.IngredientCategory;
-import app.mealplanner.domain.catalogue.LunchboxServing;
 import app.mealplanner.domain.catalogue.ProteinType;
 import app.mealplanner.domain.catalogue.Recipe;
 import app.mealplanner.domain.catalogue.RecipeFacts;
 import app.mealplanner.domain.catalogue.RecipeIngredient;
-import app.mealplanner.domain.catalogue.ScalingMode;
-import app.mealplanner.domain.catalogue.Season;
 import app.mealplanner.domain.catalogue.Unit;
 import java.util.List;
 import java.util.Map;
@@ -28,10 +23,9 @@ import org.junit.jupiter.api.Test;
 class MealAssignmentRulesTest {
 
 	private static final Ingredient EGG_WITH_ALLERGEN = new Ingredient(1, "Ous", IngredientCategory.EGG,
-			CanonicalUnit.G, dec("720"), Aisle.DAIRY_EGGS, Set.of(Allergen.EGGS),
-			Map.of(Unit.UNIT, dec("60")), false);
-	private static final Ingredient HAKE = new Ingredient(7, "Lluç", IngredientCategory.FISH, CanonicalUnit.G,
-			dec("500"), Aisle.FISHMONGER, Set.of(Allergen.FISH), Map.of(), false);
+			CanonicalUnit.G, Set.of(Allergen.EGGS),
+			Map.of(Unit.UNIT, dec("60")));
+	private static final Ingredient HAKE = new Ingredient(7, "Lluç", IngredientCategory.FISH, CanonicalUnit.G, Set.of(Allergen.FISH), Map.of());
 
 	private final Recipe truita = recipe("Truita", true, EGG_WITH_ALLERGEN, POTATO);
 	private final Recipe hake = recipe("Lluç al forn", false, HAKE, POTATO);
@@ -53,7 +47,7 @@ class MealAssignmentRulesTest {
 
 	@Test
 	void rejectsAllergensOfAnyDiner() {
-		var allergic = new Diner(2, "Pau", DinerLocation.HOME, DietType.OMNIVORE, Set.of(Allergen.EGGS), Set.of());
+		var allergic = new Diner(2, "Pau", DinerLocation.HOME, DietType.OMNIVORE, Set.of(Allergen.EGGS));
 
 		assertThat(MealAssignmentRules.violations(truita, List.of(diner("Anna", DinerLocation.HOME), allergic)))
 				.containsExactly(new AssignmentViolation.ContainsAllergen("Pau", Allergen.EGGS));
@@ -61,21 +55,13 @@ class MealAssignmentRulesTest {
 
 	@Test
 	void rejectsRecipesTheDietExcludes() {
-		var vegetarian = new Diner(3, "Marta", DinerLocation.HOME, DietType.VEGETARIAN, Set.of(), Set.of());
-		var vegan = new Diner(4, "Joan", DinerLocation.HOME, DietType.VEGAN, Set.of(), Set.of());
+		var vegetarian = new Diner(3, "Marta", DinerLocation.HOME, DietType.VEGETARIAN, Set.of());
+		var vegan = new Diner(4, "Joan", DinerLocation.HOME, DietType.VEGAN, Set.of());
 
 		assertThat(MealAssignmentRules.violations(hake, List.of(vegetarian)))
 				.containsExactly(new AssignmentViolation.IncompatibleDiet("Marta", DietType.VEGETARIAN));
 		assertThat(MealAssignmentRules.allows(truita, List.of(vegetarian))).isTrue();
 		assertThat(MealAssignmentRules.allows(truita, List.of(vegan))).isFalse();
-	}
-
-	@Test
-	void dislikesAreNotAHardConstraint() {
-		var dislikesEggs = new Diner(5, "Laia", DinerLocation.HOME, DietType.OMNIVORE, Set.of(),
-				Set.of(EGG_WITH_ALLERGEN.id()));
-
-		assertThat(MealAssignmentRules.allows(truita, List.of(dislikesEggs))).isTrue();
 	}
 
 	@Test
@@ -89,14 +75,13 @@ class MealAssignmentRulesTest {
 	}
 
 	private static Diner diner(String name, DinerLocation location) {
-		return new Diner(name.hashCode(), name, location, DietType.OMNIVORE, Set.of(), Set.of());
+		return new Diner(name.hashCode(), name, location, DietType.OMNIVORE, Set.of());
 	}
 
 	private static Recipe recipe(String name, boolean portable, Ingredient... ingredients) {
 		List<RecipeIngredient> lines = java.util.Arrays.stream(ingredients)
-				.map(i -> new RecipeIngredient(i, dec("100"), Unit.G, ScalingMode.LINEAR))
+				.map(i -> new RecipeIngredient(i, dec("100"), Unit.G))
 				.toList();
-		return new Recipe(name.hashCode(), name, 4, 30, ProteinType.EGGS, Cuisine.SPANISH, Set.of(Season.SPRING),
-				portable, portable ? LunchboxServing.REHEAT : null, lines);
+		return new Recipe(name.hashCode(), name, 4, 30, ProteinType.EGGS, portable, lines);
 	}
 }

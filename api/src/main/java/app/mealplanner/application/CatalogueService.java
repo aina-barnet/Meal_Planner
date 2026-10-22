@@ -50,7 +50,6 @@ public class CatalogueService {
 	public record RecipeView(
 			Recipe recipe,
 			String code,
-			String description,
 			List<String> steps,
 			Set<Allergen> allergens,
 			Set<DietType> diets,
@@ -132,7 +131,7 @@ public class CatalogueService {
 		Map<Long, RecipeView> recipesById = new LinkedHashMap<>();
 		for (RecipeEntity entity : recipes.findAllWithIngredients()) {
 			Recipe recipe = toDomain(entity, ingredientsById);
-			recipesById.put(recipe.id(), new RecipeView(recipe, entity.getCode(), entity.getDescription(),
+			recipesById.put(recipe.id(), new RecipeView(recipe, entity.getCode(),
 					entity.getSteps().stream().map(RecipeEntity.Step::getInstruction).toList(),
 					RecipeFacts.allergens(recipe), RecipeFacts.compatibleDiets(recipe), entity.isCustom(),
 					entity.isHidden()));
@@ -141,17 +140,17 @@ public class CatalogueService {
 	}
 
 	private static Ingredient toDomain(IngredientEntity e) {
-		return new Ingredient(e.getId(), e.getName(), e.getCategory(), e.getCanonicalUnit(), e.getPackageSize(),
-				e.getAisle(), e.getAllergens(), e.getConversions(), e.isPantryStaple());
+		return new Ingredient(e.getId(), e.getName(), e.getCategory(), e.getCanonicalUnit(), e.getAllergens(),
+				e.getConversions());
 	}
 
 	private static Recipe toDomain(RecipeEntity e, Map<Long, Ingredient> ingredientsById) {
 		List<RecipeIngredient> lines = e.getIngredients().stream()
 				.map(ri -> new RecipeIngredient(ingredientsById.get(ri.getIngredient().getId()), ri.getQuantity(),
-						ri.getUnit(), ri.getScalingMode()))
+						ri.getUnit()))
 				.toList();
 		return new Recipe(e.getId(), e.getName(), e.getBaseServings(), e.getPrepMinutes(), e.getProteinType(),
-				e.getCuisine(), e.getSeasons(), e.isPortable(), e.getLunchboxServing(), lines);
+				e.isPortable(), lines);
 	}
 
 	record Catalogue(Map<Long, Ingredient> ingredients, Set<Long> customIngredients, Map<Long, RecipeView> recipes) {
