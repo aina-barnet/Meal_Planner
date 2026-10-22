@@ -59,10 +59,6 @@ public class CatalogueEditor {
 			CanonicalUnit canonicalUnit,
 			BigDecimal packageSize,
 			Aisle aisle,
-			BigDecimal kcalPer100,
-			BigDecimal proteinPer100,
-			BigDecimal carbsPer100,
-			BigDecimal fatPer100,
 			Set<Allergen> allergens,
 			Map<Unit, BigDecimal> conversions,
 			boolean pantryStaple) {
@@ -156,7 +152,6 @@ public class CatalogueEditor {
 		entity.setCanonicalUnit(data.canonicalUnit());
 		entity.setPackageSize(data.packageSize());
 		entity.setAisle(data.aisle());
-		entity.setNutritionPer100(data.kcalPer100(), data.proteinPer100(), data.carbsPer100(), data.fatPer100());
 		entity.setPantryStaple(data.pantryStaple());
 		entity.getAllergens().clear();
 		entity.getAllergens().addAll(data.allergens());
@@ -229,8 +224,7 @@ public class CatalogueEditor {
 	/** Recipe lines that the new ingredient data would make impossible to convert. */
 	private List<String> linesBrokenBy(long ingredientId, IngredientData data) {
 		Ingredient changed = new Ingredient(ingredientId, data.name(), data.category(), data.canonicalUnit(),
-				data.packageSize(), data.aisle(), new app.mealplanner.domain.catalogue.Nutrition(0, 0, 0, 0),
-				data.allergens(), data.conversions().entrySet().stream()
+				data.packageSize(), data.aisle(), data.allergens(), data.conversions().entrySet().stream()
 						.filter(e -> !e.getKey().isMetric())
 						.collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)),
 				data.pantryStaple());

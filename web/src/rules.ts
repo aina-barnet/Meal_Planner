@@ -36,10 +36,3 @@ export function swapViolations(from: Meal, to: Meal, members: Map<number, Member
     ...(to.recipe ? violations(to.recipe, from, members) : []),
   ]
 }
-
-export type FitLevel = 'good' | 'fair' | 'poor'
-
-export function fitLevel(fit: number): FitLevel {
-  const off = Math.abs(1 - fit)
-  return off <= 0.15 ? 'good' : off <= 0.3 ? 'fair' : 'poor'
-}

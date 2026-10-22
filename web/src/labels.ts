@@ -1,5 +1,4 @@
 import type {
-  ActivityLevel,
   IngredientCategory,
   ScalingMode,
   Unit,
@@ -10,18 +9,7 @@ import type {
   DietType,
   MealSlot,
   Season,
-  Sex,
 } from './api/types'
-
-export const SEX: Record<Sex, string> = { FEMALE: 'Dona', MALE: 'Home' }
-
-export const ACTIVITY: Record<ActivityLevel, { label: string; hint: string }> = {
-  SEDENTARY: { label: 'Sedentària', hint: 'Poc o gens d’exercici' },
-  LIGHT: { label: 'Lleugera', hint: 'Exercici 1–3 dies per setmana' },
-  MODERATE: { label: 'Moderada', hint: 'Exercici 3–5 dies per setmana' },
-  ACTIVE: { label: 'Alta', hint: 'Exercici intens 6–7 dies' },
-  VERY_ACTIVE: { label: 'Molt alta', hint: 'Feina física o entrenament diari' },
-}
 
 export const DIET: Record<DietType, string> = {
   OMNIVORE: 'Omnívora',

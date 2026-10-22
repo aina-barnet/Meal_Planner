@@ -144,7 +144,6 @@ public class CatalogueController {
 
 	private static CatalogueEditor.IngredientData data(IngredientRequest r) {
 		return new CatalogueEditor.IngredientData(r.name(), r.category(), r.canonicalUnit(), r.packageSize(), r.aisle(),
-				r.kcalPer100(), r.proteinPer100(), r.carbsPer100(), r.fatPer100(),
 				r.allergens() == null ? Set.of() : r.allergens(),
 				r.conversions() == null ? java.util.Map.of() : r.conversions(), r.pantryStaple());
 	}

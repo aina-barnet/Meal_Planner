@@ -3,8 +3,6 @@ package app.mealplanner.application;
 import app.mealplanner.domain.catalogue.Allergen;
 import app.mealplanner.domain.catalogue.DietType;
 import app.mealplanner.domain.catalogue.Ingredient;
-import app.mealplanner.domain.catalogue.Nutrition;
-import app.mealplanner.domain.catalogue.NutritionCalculator;
 import app.mealplanner.domain.catalogue.Recipe;
 import app.mealplanner.domain.catalogue.RecipeFacts;
 import app.mealplanner.domain.catalogue.RecipeIngredient;
@@ -54,7 +52,6 @@ public class CatalogueService {
 			String code,
 			String description,
 			List<String> steps,
-			Nutrition perServing,
 			Set<Allergen> allergens,
 			Set<DietType> diets,
 			boolean custom,
@@ -137,18 +134,15 @@ public class CatalogueService {
 			Recipe recipe = toDomain(entity, ingredientsById);
 			recipesById.put(recipe.id(), new RecipeView(recipe, entity.getCode(), entity.getDescription(),
 					entity.getSteps().stream().map(RecipeEntity.Step::getInstruction).toList(),
-					NutritionCalculator.perServing(recipe), RecipeFacts.allergens(recipe),
-					RecipeFacts.compatibleDiets(recipe), entity.isCustom(), entity.isHidden()));
+					RecipeFacts.allergens(recipe), RecipeFacts.compatibleDiets(recipe), entity.isCustom(),
+					entity.isHidden()));
 		}
 		return new Catalogue(Map.copyOf(ingredientsById), customIngredients, recipesById);
 	}
 
 	private static Ingredient toDomain(IngredientEntity e) {
 		return new Ingredient(e.getId(), e.getName(), e.getCategory(), e.getCanonicalUnit(), e.getPackageSize(),
-				e.getAisle(),
-				new Nutrition(e.getKcalPer100().doubleValue(), e.getProteinPer100().doubleValue(),
-						e.getCarbsPer100().doubleValue(), e.getFatPer100().doubleValue()),
-				e.getAllergens(), e.getConversions(), e.isPantryStaple());
+				e.getAisle(), e.getAllergens(), e.getConversions(), e.isPantryStaple());
 	}
 
 	private static Recipe toDomain(RecipeEntity e, Map<Long, Ingredient> ingredientsById) {

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useHideRecipe, useRecipes } from '../api/hooks'
 import type { ProteinType } from '../api/types'
-import { CUISINE, formatNumber } from '../labels'
+import { CUISINE } from '../labels'
 import { useProteinName } from '../proteins'
 import { ProteinManager } from './ProteinManager'
 import { navigate } from '../router'
@@ -83,7 +83,6 @@ export function RecipeList() {
               <tr>
                 <th className="px-5 py-3 font-medium">Plat</th>
                 <th className="px-5 py-3 font-medium">Tipus</th>
-                <th className="px-5 py-3 text-right font-medium">kcal/ració</th>
                 <th className="px-5 py-3 font-medium">Temps</th>
                 <th className="px-5 py-3" />
               </tr>
@@ -112,7 +111,6 @@ export function RecipeList() {
                   <td className="px-5 py-3 text-stone-600">
                     {proteinName(recipe.proteinType)} · {CUISINE[recipe.cuisine]}
                   </td>
-                  <td className="px-5 py-3 text-right tabular-nums">{formatNumber(recipe.nutrition.kcal)}</td>
                   <td className="px-5 py-3 text-stone-600">{recipe.prepMinutes} min</td>
                   <td className="px-5 py-3 text-right whitespace-nowrap">
                     <Button variant="ghost" className="px-2 py-1" onClick={() => navigate({ screen: 'recipe', recipeId: recipe.id })}>

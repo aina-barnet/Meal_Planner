@@ -2,11 +2,6 @@ package app.mealplanner.application;
 
 import app.mealplanner.domain.catalogue.Allergen;
 import app.mealplanner.domain.catalogue.DietType;
-import app.mealplanner.domain.nutrition.ActivityLevel;
-import app.mealplanner.domain.nutrition.EnergyRequirement;
-import app.mealplanner.domain.nutrition.EnergyRequirementCalculator;
-import app.mealplanner.domain.nutrition.MemberProfile;
-import app.mealplanner.domain.nutrition.Sex;
 import app.mealplanner.domain.planning.Diner;
 import app.mealplanner.domain.planning.DinerLocation;
 import app.mealplanner.persistence.AllergenKind;
@@ -14,9 +9,6 @@ import app.mealplanner.persistence.HouseholdEntity;
 import app.mealplanner.persistence.MemberEntity;
 import app.mealplanner.persistence.Repositories.HouseholdRepository;
 import app.mealplanner.persistence.Repositories.MemberRepository;
-import java.math.BigDecimal;
-import java.time.Clock;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -31,27 +23,17 @@ public class HouseholdService {
 	private final HouseholdRepository households;
 	private final MemberRepository members;
 	private final CatalogueService catalogue;
-	private final Clock clock;
 
-	public HouseholdService(HouseholdRepository households, MemberRepository members, CatalogueService catalogue,
-			Clock clock) {
+	public HouseholdService(HouseholdRepository households, MemberRepository members, CatalogueService catalogue) {
 		this.households = households;
 		this.members = members;
 		this.catalogue = catalogue;
-		this.clock = clock;
 	}
 
 	public record MemberData(
 			String name,
-			LocalDate birthDate,
-			Sex sex,
-			BigDecimal weightKg,
-			BigDecimal heightCm,
-			ActivityLevel activityLevel,
 			DietType dietType,
 			String dietNotes,
-			Integer kcalOverride,
-			int mainMealsPct,
 			Map<Allergen, AllergenKind> allergens,
 			Set<Long> dislikedIngredientIds) {
 	}
@@ -101,20 +83,9 @@ public class HouseholdService {
 		members.delete(member(id));
 	}
 
-	/** Today's orientative estimate for a member. */
-	public EnergyRequirement requirement(MemberEntity member) {
-		return EnergyRequirementCalculator.calculate(profile(member), LocalDate.now(clock));
-	}
-
 	public Diner diner(MemberEntity member, DinerLocation location) {
 		return new Diner(member.getId(), member.getName(), location, member.getDietType(),
 				member.getAllergens().keySet(), member.getDislikedIngredientIds());
-	}
-
-	private static MemberProfile profile(MemberEntity member) {
-		return new MemberProfile(member.getBirthDate(), member.getSex(), member.getWeightKg().doubleValue(),
-				member.getHeightCm().doubleValue(), member.getActivityLevel(), member.getKcalOverride(),
-				member.getMainMealsPct());
 	}
 
 	private void apply(MemberEntity member, MemberData data) {
@@ -124,15 +95,8 @@ public class HouseholdService {
 					unknown.stream().map(id -> "Ingredient " + id).toList());
 		}
 		member.setName(data.name().strip());
-		member.setBirthDate(data.birthDate());
-		member.setSex(data.sex());
-		member.setWeightKg(data.weightKg());
-		member.setHeightCm(data.heightCm());
-		member.setActivityLevel(data.activityLevel());
 		member.setDietType(data.dietType());
 		member.setDietNotes(data.dietNotes() == null || data.dietNotes().isBlank() ? null : data.dietNotes().strip());
-		member.setKcalOverride(data.kcalOverride());
-		member.setMainMealsPct(data.mainMealsPct());
 		member.getAllergens().clear();
 		member.getAllergens().putAll(data.allergens());
 		member.getDislikedIngredientIds().clear();

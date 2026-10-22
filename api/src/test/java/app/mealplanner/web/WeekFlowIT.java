@@ -48,20 +48,17 @@ class WeekFlowIT {
 	}
 
 	@Test
-	void memberComesBackWithAnOrientativeRequirement() {
+	void membersCanBeAddedAndEdited() {
 		setUpHousehold();
 
-		MvcTestResult created = post("/api/household/members", member("Anna", "FEMALE", null));
+		MvcTestResult created = post("/api/household/members", member("Anna"));
 
 		assertThat(created).hasStatus(201);
-		assertThat(created).bodyJson().extractingPath("$.requirement.estimatedDailyKcal").isNotNull();
-		assertThat(created).bodyJson().extractingPath("$.mainMealsPct").isEqualTo(65);
-		assertThat(created).bodyJson().extractingPath("$.requirement.overridden").isEqualTo(false);
+		assertThat(created).bodyJson().extractingPath("$.dietType").isEqualTo("OMNIVORE");
 
 		long id = id(created);
-		MvcTestResult overridden = put("/api/household/members/" + id, member("Anna", "FEMALE", 1900));
-		assertThat(overridden).bodyJson().extractingPath("$.requirement.dailyKcal").isEqualTo(1900);
-		assertThat(overridden).bodyJson().extractingPath("$.requirement.perMainMealKcal").isEqualTo(618);
+		MvcTestResult renamed = put("/api/household/members/" + id, member("Anna Maria"));
+		assertThat(renamed).hasStatusOk().bodyJson().extractingPath("$.name").isEqualTo("Anna Maria");
 	}
 
 	@Test
@@ -69,19 +66,18 @@ class WeekFlowIT {
 		setUpHousehold();
 
 		MvcTestResult result = post("/api/household/members", """
-				{"name":"","birthDate":"2999-01-01","sex":"FEMALE","weightKg":-3,"heightCm":165,
-				 "activityLevel":"LIGHT","dietType":"OMNIVORE"}""");
+				{"name":""}""");
 
 		assertThat(result).hasStatus(400).bodyJson().extractingPath("$.code").isEqualTo("VALIDATION_FAILED");
 		List<String> fields = JsonPath.read(body(result), "$.errors[*].field");
-		assertThat(fields).contains("name", "birthDate", "weightKg");
+		assertThat(fields).contains("name", "dietType");
 	}
 
 	@Test
 	void newWeekPlansEveryLunchAndDinnerForEveryone() {
 		setUpHousehold();
-		post("/api/household/members", member("Anna", "FEMALE", null));
-		post("/api/household/members", member("Pau", "MALE", null));
+		post("/api/household/members", member("Anna"));
+		post("/api/household/members", member("Pau"));
 
 		MvcTestResult week = post("/api/weeks", "{\"weekStart\":\"" + MONDAY + "\"}");
 
@@ -128,8 +124,7 @@ class WeekFlowIT {
 	void allergiesAreEnforcedByTheApi() {
 		setUpHousehold();
 		long member = id(post("/api/household/members", """
-				{"name":"Pau","birthDate":"1990-04-02","sex":"MALE","weightKg":75,"heightCm":178,
-				 "activityLevel":"MODERATE","dietType":"OMNIVORE",
+				{"name":"Pau","dietType":"OMNIVORE",
 				 "allergens":[{"allergen":"EGGS","kind":"ALLERGY"}]}"""));
 		long weekId = id(post("/api/weeks", "{\"weekStart\":\"" + MONDAY + "\"}"));
 		long mealId = firstMealId(weekId);
@@ -274,8 +269,7 @@ class WeekFlowIT {
 		put(mealUri(f, f.dinnerId) + "/recipe", "{\"recipeId\":" + recipe("truita-patates") + "}");
 		// Since then, Anna has become allergic to eggs.
 		put("/api/household/members/" + f.anna, """
-				{"name":"Anna","birthDate":"1988-06-15","sex":"FEMALE","weightKg":65,"heightCm":168,
-				 "activityLevel":"LIGHT","dietType":"OMNIVORE","allergens":[{"allergen":"EGGS","kind":"ALLERGY"}]}""");
+				{"name":"Anna","dietType":"OMNIVORE","allergens":[{"allergen":"EGGS","kind":"ALLERGY"}]}""");
 
 		MvcTestResult copied = post("/api/weeks/" + f.weekId + "/copy", "{\"targetWeekStart\":\"2026-10-26\"}");
 
@@ -304,10 +298,9 @@ class WeekFlowIT {
 	@Test
 	void generatorFillsTheWeekWithValidDishesAndKeepsLockedOnes() {
 		setUpHousehold();
-		long anna = id(post("/api/household/members", member("Anna", "FEMALE", null)));
+		long anna = id(post("/api/household/members", member("Anna")));
 		long pau = id(post("/api/household/members", """
-				{"name":"Pau","birthDate":"1985-09-02","sex":"MALE","weightKg":80,"heightCm":181,
-				 "activityLevel":"MODERATE","dietType":"VEGETARIAN",
+				{"name":"Pau","dietType":"VEGETARIAN",
 				 "allergens":[{"allergen":"EGGS","kind":"INTOLERANCE"}]}"""));
 		long weekId = id(post("/api/weeks", "{\"weekStart\":\"" + MONDAY + "\"}"));
 		Fixture f = new Fixture(weekId, anna, pau, 0, 0);
@@ -334,8 +327,7 @@ class WeekFlowIT {
 	void generatorLeavesImpossibleMealsEmptyWithAReason() {
 		setUpHousehold();
 		long id = id(post("/api/household/members", """
-				{"name":"Marta","birthDate":"1990-01-01","sex":"FEMALE","weightKg":60,"heightCm":165,
-				 "activityLevel":"LIGHT","dietType":"VEGAN",
+				{"name":"Marta","dietType":"VEGAN",
 				 "allergens":[{"allergen":"GLUTEN","kind":"ALLERGY"},{"allergen":"CELERY","kind":"ALLERGY"},
 				              {"allergen":"SULPHITES","kind":"ALLERGY"},{"allergen":"SESAME","kind":"ALLERGY"}]}"""));
 		long weekId = id(post("/api/weeks", "{\"weekStart\":\"" + MONDAY + "\"}"));
@@ -378,8 +370,8 @@ class WeekFlowIT {
 	/** Anna and Pau; Monday lunch with Pau taking a lunchbox, Monday dinner both at home. */
 	private Fixture weekWithOneLunchboxLunchAndOneDinner() {
 		setUpHousehold();
-		long anna = id(post("/api/household/members", member("Anna", "FEMALE", null)));
-		long pau = id(post("/api/household/members", member("Pau", "MALE", null)));
+		long anna = id(post("/api/household/members", member("Anna")));
+		long pau = id(post("/api/household/members", member("Pau")));
 		long weekId = id(post("/api/weeks", "{\"weekStart\":\"" + MONDAY + "\"}"));
 		Fixture partial = new Fixture(weekId, anna, pau, 0, 0);
 		MvcTestResult configured = put("/api/weeks/" + weekId + "/meals", configure(partial, "TAKEAWAY", "HOME"));
@@ -407,11 +399,9 @@ class WeekFlowIT {
 		assertThat(put("/api/household", "{\"name\":\"Casa\"}")).hasStatusOk();
 	}
 
-	private static String member(String name, String sex, Integer kcalOverride) {
+	private static String member(String name) {
 		return """
-				{"name":"%s","birthDate":"1988-06-15","sex":"%s","weightKg":65,"heightCm":168,
-				 "activityLevel":"LIGHT","dietType":"OMNIVORE","kcalOverride":%s}"""
-				.formatted(name, sex, kcalOverride == null ? "null" : kcalOverride.toString());
+				{"name":"%s","dietType":"OMNIVORE"}""".formatted(name);
 	}
 
 	private long firstMealId(long weekId) {

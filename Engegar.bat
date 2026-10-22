@@ -46,6 +46,15 @@ if errorlevel 1 (
 :docker_ready
 echo   [1/3] Docker Desktop en marxa.
 
+rem Safety copy before every start: a new version of the app may upgrade the database.
+rem Only when there is already data, i.e. not on the very first start on this computer.
+docker volume inspect meal-planner_pgdata >nul 2>&1
+if not errorlevel 1 (
+    echo   Guardant una còpia de seguretat de les dades...
+    call "%~dp0Guardar dades.bat" /auto >nul
+    if errorlevel 1 echo   Avís: no s'ha pogut fer la còpia de seguretat automàtica.
+)
+
 echo   [2/3] Engegant l'aplicació (la primera vegada pot trigar uns minuts)...
 docker compose up -d --build
 if errorlevel 1 (

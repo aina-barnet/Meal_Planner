@@ -142,8 +142,8 @@ public class WeekPlanController {
 
 	@PostMapping("/{weekId}/generate")
 	@Operation(summary = "Propose a balanced menu",
-			description = "Fills every meal that is not locked, using rules plus scoring (kcal fit, protein rotation, "
-					+ "variety, recency) with some randomness. Meals no recipe can satisfy are left empty with an "
+			description = "Fills every meal that is not locked, using rules plus scoring (protein rotation, variety, "
+					+ "recency) with some randomness. Meals no recipe can satisfy are left empty with an "
 					+ "emptyReason explaining which constraints ruled the catalogue out.")
 	public WeekResponse generate(@PathVariable long weekId) {
 		return WeekResponse.of(generator.generate(weekId));

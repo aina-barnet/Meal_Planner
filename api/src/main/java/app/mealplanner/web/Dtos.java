@@ -11,14 +11,10 @@ import app.mealplanner.domain.catalogue.DietType;
 import app.mealplanner.domain.catalogue.Ingredient;
 import app.mealplanner.domain.catalogue.IngredientCategory;
 import app.mealplanner.domain.catalogue.LunchboxServing;
-import app.mealplanner.domain.catalogue.Nutrition;
 import app.mealplanner.domain.catalogue.ScalingMode;
 import app.mealplanner.domain.catalogue.Season;
 import app.mealplanner.domain.catalogue.Unit;
 import app.mealplanner.domain.catalogue.UnitConverter;
-import app.mealplanner.domain.nutrition.ActivityLevel;
-import app.mealplanner.domain.nutrition.EnergyRequirement;
-import app.mealplanner.domain.nutrition.Sex;
 import app.mealplanner.domain.planning.DinerLocation;
 import app.mealplanner.domain.planning.MealSlot;
 import app.mealplanner.persistence.AllergenKind;
@@ -34,7 +30,6 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -68,61 +63,27 @@ public final class Dtos {
 
 	public record MemberRequest(
 			@NotBlank @Size(max = 80) String name,
-			@NotNull @Past LocalDate birthDate,
-			@NotNull Sex sex,
-			@NotNull @DecimalMin("2") @DecimalMax("400") BigDecimal weightKg,
-			@NotNull @DecimalMin("40") @DecimalMax("250") BigDecimal heightCm,
-			@NotNull ActivityLevel activityLevel,
 			@NotNull DietType dietType,
 			@Size(max = 500) String dietNotes,
-			@Schema(description = "Manual daily kcal; replaces the estimate") @Min(500) @Max(6000) Integer kcalOverride,
-			@Schema(description = "Share of daily kcal eaten at lunch + dinner; default 65") @Min(10) @Max(100) Integer mainMealsPct,
 			List<@Valid AllergenEntry> allergens,
 			List<@NotNull Long> dislikedIngredientIds) {
-	}
-
-	@Schema(description = "Orientative estimate (Mifflin-St Jeor × activity factor). Not medical advice.")
-	public record RequirementResponse(
-			int ageYears,
-			int basalKcal,
-			int estimatedDailyKcal,
-			int dailyKcal,
-			boolean overridden,
-			int perMainMealKcal,
-			boolean equationValidForAge) {
-
-		static RequirementResponse of(EnergyRequirement r) {
-			return new RequirementResponse(r.ageYears(), r.basalKcal(), r.estimatedDailyKcal(), r.dailyKcal(),
-					r.overridden(), r.perMainMealKcal(), r.equationValidForAge());
-		}
 	}
 
 	public record MemberResponse(
 			long id,
 			String name,
-			LocalDate birthDate,
-			Sex sex,
-			BigDecimal weightKg,
-			BigDecimal heightCm,
-			ActivityLevel activityLevel,
 			DietType dietType,
 			String dietNotes,
-			Integer kcalOverride,
-			int mainMealsPct,
 			List<AllergenEntry> allergens,
-			List<Long> dislikedIngredientIds,
-			RequirementResponse requirement) {
+			List<Long> dislikedIngredientIds) {
 
-		static MemberResponse of(MemberEntity m, EnergyRequirement requirement) {
-			return new MemberResponse(m.getId(), m.getName(), m.getBirthDate(), m.getSex(), m.getWeightKg(),
-					m.getHeightCm(), m.getActivityLevel(), m.getDietType(), m.getDietNotes(), m.getKcalOverride(),
-					m.getMainMealsPct(),
+		static MemberResponse of(MemberEntity m) {
+			return new MemberResponse(m.getId(), m.getName(), m.getDietType(), m.getDietNotes(),
 					m.getAllergens().entrySet().stream()
 							.map(e -> new AllergenEntry(e.getKey(), e.getValue()))
 							.sorted(Comparator.comparing(AllergenEntry::allergen))
 							.toList(),
-					m.getDislikedIngredientIds().stream().sorted().toList(),
-					RequirementResponse.of(requirement));
+					m.getDislikedIngredientIds().stream().sorted().toList());
 		}
 	}
 
@@ -137,19 +98,14 @@ public final class Dtos {
 			Aisle aisle,
 			boolean pantryStaple,
 			Set<Allergen> allergens,
-			double kcalPer100,
-			double proteinPer100,
-			double carbsPer100,
-			double fatPer100,
 			@Schema(description = "Canonical units (g or ml) per one recipe unit, e.g. UNIT: 60 for an egg")
 			java.util.Map<Unit, BigDecimal> conversions,
 			@Schema(description = "Added by the family; only these can be edited") boolean custom) {
 
 		static IngredientResponse of(Ingredient i, boolean custom) {
-			var n = i.nutritionPer100();
 			return new IngredientResponse(i.id(), i.name(), i.category(), i.canonicalUnit(), i.packageSize(),
-					i.aisle(), i.pantryStaple(), new TreeSet<>(i.allergens()), n.kcal(), n.proteinG(), n.carbsG(),
-					n.fatG(), new java.util.TreeMap<>(i.conversions()), custom);
+					i.aisle(), i.pantryStaple(), new TreeSet<>(i.allergens()), new java.util.TreeMap<>(i.conversions()),
+					custom);
 		}
 	}
 
@@ -159,10 +115,6 @@ public final class Dtos {
 			@NotNull CanonicalUnit canonicalUnit,
 			@NotNull @DecimalMin("0.01") @DecimalMax("100000") BigDecimal packageSize,
 			@NotNull Aisle aisle,
-			@NotNull @DecimalMin("0") @DecimalMax("900") BigDecimal kcalPer100,
-			@NotNull @DecimalMin("0") @DecimalMax("100") BigDecimal proteinPer100,
-			@NotNull @DecimalMin("0") @DecimalMax("100") BigDecimal carbsPer100,
-			@NotNull @DecimalMin("0") @DecimalMax("100") BigDecimal fatPer100,
 			Set<Allergen> allergens,
 			java.util.Map<Unit, @NotNull @DecimalMin("0.001") BigDecimal> conversions,
 			boolean pantryStaple) {
@@ -202,15 +154,6 @@ public final class Dtos {
 			@Schema(description = "How many recipes use it") long recipes) {
 	}
 
-	@Schema(description = "Nutrition per serving, computed from the ingredient list")
-	public record NutritionResponse(int kcal, double proteinG, double carbsG, double fatG) {
-
-		static NutritionResponse of(Nutrition n) {
-			return new NutritionResponse((int) Math.round(n.kcal()), round1(n.proteinG()), round1(n.carbsG()),
-					round1(n.fatG()));
-		}
-	}
-
 	public record RecipeSummary(
 			long id,
 			String code,
@@ -223,7 +166,6 @@ public final class Dtos {
 			Set<Season> seasons,
 			boolean portable,
 			LunchboxServing lunchboxServing,
-			NutritionResponse nutrition,
 			Set<Allergen> allergens,
 			Set<DietType> diets,
 			@Schema(description = "Added by the family") boolean custom,
@@ -233,8 +175,7 @@ public final class Dtos {
 			var r = v.recipe();
 			return new RecipeSummary(r.id(), v.code(), r.name(), v.description(), r.baseServings(), r.prepMinutes(),
 					r.proteinType().code(), r.cuisine(), new TreeSet<>(r.seasons()), r.portable(), r.lunchboxServing(),
-					NutritionResponse.of(v.perServing()), new TreeSet<>(v.allergens()), new TreeSet<>(v.diets()),
-					v.custom(), v.hidden());
+					new TreeSet<>(v.allergens()), new TreeSet<>(v.diets()), v.custom(), v.hidden());
 		}
 	}
 
@@ -315,23 +256,18 @@ public final class Dtos {
 			boolean locked,
 			String emptyReason,
 			RecipeSummary recipe,
-			@Schema(description = "Sum of the attendees' per-meal kcal targets") int kcalTarget,
-			@Schema(description = "kcal the diners get from the recipe, one serving each") Integer kcalOffered,
-			@Schema(description = "kcalOffered / kcalTarget; 1.0 is a perfect fit") Double kcalFit,
 			@Schema(description = "Soft warnings, such as disliked ingredients") List<String> notes) {
 
 		static MealResponse of(MealDetail d) {
 			var m = d.meal();
 			RecipeSummary recipe = d.recipe() == null ? null : RecipeSummary.of(d.recipe());
-			Integer offered = recipe == null ? null : recipe.nutrition().kcal() * (d.dinersAtHome() + d.dinersTakeaway());
 			return new MealResponse(m.getId(), m.getDate(), m.getSlot(),
 					m.getAttendees().entrySet().stream()
 							.map(e -> new AttendeeDto(e.getKey(), e.getValue()))
 							.sorted(Comparator.comparing(AttendeeDto::memberId))
 							.toList(),
 					d.dinersAtHome(), d.dinersTakeaway(), m.getExtraServings(), d.totalServings(), m.isLocked(),
-					m.getEmptyReason(), recipe, d.kcalTarget(), offered,
-					d.kcalFit() == null ? null : Math.round(d.kcalFit() * 100) / 100.0, d.notes());
+					m.getEmptyReason(), recipe, d.notes());
 		}
 	}
 
@@ -377,9 +313,5 @@ public final class Dtos {
 	}
 
 	public record PantryRequest(@NotNull @DecimalMin("0") @DecimalMax("1000000") BigDecimal quantity) {
-	}
-
-	private static double round1(double value) {
-		return Math.round(value * 10) / 10.0;
 	}
 }

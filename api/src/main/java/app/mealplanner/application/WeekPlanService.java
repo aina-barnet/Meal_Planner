@@ -1,12 +1,10 @@
 package app.mealplanner.application;
 
 import app.mealplanner.application.CatalogueService.RecipeView;
-import app.mealplanner.domain.nutrition.EnergyRequirement;
 import app.mealplanner.domain.planning.AssignmentViolation;
 import app.mealplanner.domain.planning.Diner;
 import app.mealplanner.domain.planning.DinerLocation;
 import app.mealplanner.domain.planning.MealAssignmentRules;
-import app.mealplanner.domain.planning.MealKcalTarget;
 import app.mealplanner.domain.planning.MealServings;
 import app.mealplanner.domain.planning.MealSlot;
 import app.mealplanner.domain.shopping.PantryRollback;
@@ -75,8 +73,6 @@ public class WeekPlanService {
 			RecipeView recipe,
 			int dinersAtHome,
 			int dinersTakeaway,
-			int kcalTarget,
-			Double kcalFit,
 			List<String> notes) {
 
 		public int totalServings() {
@@ -98,11 +94,9 @@ public class WeekPlanService {
 	public WeekDetail detail(long weekId) {
 		WeekPlanEntity week = week(weekId);
 		Map<Long, MemberEntity> members = membersById();
-		Map<Long, EnergyRequirement> requirements = members.values().stream()
-				.collect(Collectors.toMap(MemberEntity::getId, household::requirement));
 		List<MealDetail> meals = week.getMeals().stream()
 				.sorted(java.util.Comparator.comparing(MealEntity::getDate).thenComparing(MealEntity::getSlot))
-				.map(meal -> detail(meal, members, requirements))
+				.map(meal -> detail(meal, members))
 				.toList();
 		return new WeekDetail(week, meals);
 	}
@@ -379,23 +373,11 @@ public class WeekPlanService {
 		});
 	}
 
-	private MealDetail detail(MealEntity meal, Map<Long, MemberEntity> members,
-			Map<Long, EnergyRequirement> requirements) {
+	private MealDetail detail(MealEntity meal, Map<Long, MemberEntity> members) {
 		MealServings servings = servings(meal);
-		int target = MealKcalTarget.forAttendees(meal.getAttendees().keySet().stream()
-				.map(requirements::get)
-				.filter(java.util.Objects::nonNull)
-				.toList());
 		RecipeView recipe = meal.getRecipeId() == null ? null : catalogue.recipe(meal.getRecipeId());
-		Double fit = null;
-		List<String> notes = List.of();
-		if (recipe != null) {
-			var ratio = MealKcalTarget.fit(target, recipe.perServing().kcal(),
-					servings.dinersAtHome() + servings.dinersTakeaway());
-			fit = ratio.isPresent() ? ratio.getAsDouble() : null;
-			notes = dislikeNotes(recipe, meal, members);
-		}
-		return new MealDetail(meal, recipe, servings.dinersAtHome(), servings.dinersTakeaway(), target, fit, notes);
+		List<String> notes = recipe == null ? List.of() : dislikeNotes(recipe, meal, members);
+		return new MealDetail(meal, recipe, servings.dinersAtHome(), servings.dinersTakeaway(), notes);
 	}
 
 	private List<String> dislikeNotes(RecipeView recipe, MealEntity meal, Map<Long, MemberEntity> members) {

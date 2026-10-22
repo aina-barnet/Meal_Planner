@@ -1,7 +1,6 @@
 package app.mealplanner.domain.generator;
 
 import app.mealplanner.domain.catalogue.IngredientCategory;
-import app.mealplanner.domain.catalogue.NutritionCalculator;
 import app.mealplanner.domain.catalogue.Recipe;
 import app.mealplanner.domain.planning.AssignmentViolation;
 import app.mealplanner.domain.planning.Diner;
@@ -37,16 +36,13 @@ import java.util.stream.Collectors;
  *
  * <p><b>2. Scoring.</b> Every surviving recipe gets a score in roughly [0, 1], a weighted sum of:
  * <ul>
- *   <li><b>kcal fit (35 %)</b>: one serving per diner compared with the meal's aggregate target
- *       (the sum of the diners' per-meal targets). 1 when it matches exactly, falling linearly to
- *       0 when it is 50 % or more off. Meals without a target score 0.5.</li>
- *   <li><b>protein rotation (25 %)</b>: how long ago the same protein source (fish, legumes,
+ *   <li><b>protein rotation (40 %)</b>: how long ago the same protein source (fish, legumes,
  *       poultry…) was last served in the previous two days. Never in that window: 1. Two days
  *       ago: 0.6. Yesterday: 0.2. Earlier the same day: 0.</li>
- *   <li><b>variety (20 %)</b>: 60 % for the share of the recipe's vegetables not yet used this
+ *   <li><b>variety (30 %)</b>: 60 % for the share of the recipe's vegetables not yet used this
  *       week (0.5 for recipes without vegetables), 40 % for cuisine: 1 minus the share of the
  *       last three meals with the same cuisine.</li>
- *   <li><b>recency (20 %)</b>: 0 if the dish is already on this week's menu. Otherwise it grows
+ *   <li><b>recency (30 %)</b>: 0 if the dish is already on this week's menu. Otherwise it grows
  *       linearly with the days since it was last planned in a previous week, reaching 1 at 28
  *       days, or if it has never been planned.</li>
  * </ul>
@@ -56,30 +52,26 @@ import java.util.stream.Collectors;
  * <p><b>3. Choice.</b> Dishes already on this week's menu are set aside while any other candidate
  * remains, so a week only repeats a dish when the constraints leave nothing else. Of the rest,
  * the five best-scoring recipes are kept and one is drawn at random with
- * probability proportional to score³. The cube strongly favours the best fits but still varies,
+ * probability proportional to score³. The cube strongly favours the best scores but still varies,
  * so generating the same week twice gives different menus. The random generator is injected,
  * which makes tests reproducible.
  */
 public final class MenuGenerator {
 
-	static final double WEIGHT_KCAL = 0.35;
-	static final double WEIGHT_PROTEIN = 0.25;
-	static final double WEIGHT_VARIETY = 0.20;
-	static final double WEIGHT_RECENCY = 0.20;
+	static final double WEIGHT_PROTEIN = 0.40;
+	static final double WEIGHT_VARIETY = 0.30;
+	static final double WEIGHT_RECENCY = 0.30;
 	static final double DISLIKE_PENALTY = 0.15;
 	static final int TOP_CANDIDATES = 5;
 	public static final int RECENCY_DAYS = 28;
 
 	private final List<Recipe> catalogue;
-	private final Map<Long, Double> kcalPerServing;
 	private final Map<Long, Set<Long>> vegetables;
 	private final RandomGenerator random;
 
 	public MenuGenerator(List<Recipe> catalogue, RandomGenerator random) {
 		this.catalogue = List.copyOf(catalogue);
 		this.random = random;
-		this.kcalPerServing = this.catalogue.stream()
-				.collect(Collectors.toMap(Recipe::id, r -> NutritionCalculator.perServing(r).kcal()));
 		this.vegetables = this.catalogue.stream()
 				.collect(Collectors.toMap(Recipe::id, r -> r.ingredients().stream()
 						.filter(line -> line.ingredient().category() == IngredientCategory.VEGETABLE)
@@ -88,7 +80,7 @@ public final class MenuGenerator {
 	}
 
 	/** One meal to fill. */
-	public record Slot(long mealId, LocalDate date, int order, List<Diner> diners, int kcalTarget, Recipe locked) {
+	public record Slot(long mealId, LocalDate date, int order, List<Diner> diners, Recipe locked) {
 
 		/** @param order position within the day: 0 for lunch, 1 for dinner */
 		public Slot {
@@ -155,20 +147,10 @@ public final class MenuGenerator {
 	// ------------------------------------------------------------------ scoring
 
 	double score(Recipe recipe, Slot slot, Week week) {
-		double score = WEIGHT_KCAL * kcalFit(recipe, slot)
-				+ WEIGHT_PROTEIN * proteinRotation(recipe, slot, week)
+		double score = WEIGHT_PROTEIN * proteinRotation(recipe, slot, week)
 				+ WEIGHT_VARIETY * variety(recipe, slot, week)
 				+ WEIGHT_RECENCY * recency(recipe, slot, week);
 		return score - DISLIKE_PENALTY * dislikers(recipe, slot);
-	}
-
-	double kcalFit(Recipe recipe, Slot slot) {
-		if (slot.kcalTarget() <= 0 || slot.diners().isEmpty()) {
-			return 0.5;
-		}
-		double offered = kcalPerServing(recipe) * slot.diners().size();
-		double deviation = Math.abs(offered - slot.kcalTarget()) / slot.kcalTarget();
-		return Math.max(0, 1 - deviation / 0.5);
 	}
 
 	double proteinRotation(Recipe recipe, Slot slot, Week week) {
@@ -222,11 +204,6 @@ public final class MenuGenerator {
 		}
 		long days = ChronoUnit.DAYS.between(lastUse, slot.date());
 		return Math.max(0, Math.min(1, (double) days / RECENCY_DAYS));
-	}
-
-	private double kcalPerServing(Recipe recipe) {
-		Double cached = kcalPerServing.get(recipe.id());
-		return cached != null ? cached : NutritionCalculator.perServing(recipe).kcal();
 	}
 
 	private static long dislikers(Recipe recipe, Slot slot) {

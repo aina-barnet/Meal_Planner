@@ -6,8 +6,6 @@ import app.mealplanner.domain.generator.MenuGenerator;
 import app.mealplanner.domain.generator.MenuGenerator.PastUse;
 import app.mealplanner.domain.generator.MenuGenerator.Result;
 import app.mealplanner.domain.generator.MenuGenerator.Slot;
-import app.mealplanner.domain.nutrition.EnergyRequirement;
-import app.mealplanner.domain.planning.MealKcalTarget;
 import app.mealplanner.domain.planning.MealSlot;
 import app.mealplanner.persistence.MealEntity;
 import app.mealplanner.persistence.MemberEntity;
@@ -15,7 +13,6 @@ import app.mealplanner.persistence.Repositories.MealRepository;
 import app.mealplanner.persistence.WeekPlanEntity;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Random;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -44,16 +41,10 @@ public class MenuGenerationService {
 	public WeekDetail generate(long weekId) {
 		WeekPlanEntity week = weeks.draft(weekId);
 		Map<Long, MemberEntity> members = weeks.membersById();
-		Map<Long, EnergyRequirement> requirements = members.values().stream()
-				.collect(Collectors.toMap(MemberEntity::getId, household::requirement));
 
 		List<Slot> slots = week.getMeals().stream()
 				.map(meal -> new Slot(meal.getId(), meal.getDate(), meal.getSlot() == MealSlot.LUNCH ? 0 : 1,
 						weeks.diners(meal, members),
-						MealKcalTarget.forAttendees(meal.getAttendees().keySet().stream()
-								.map(requirements::get)
-								.filter(Objects::nonNull)
-								.toList()),
 						meal.isLocked() && meal.getRecipeId() != null ? catalogue.recipe(meal.getRecipeId()).recipe() : null))
 				.toList();
 

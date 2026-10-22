@@ -2,8 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useAllowedRecipes } from '../api/hooks'
 import type { Meal, ProteinType, RecipeSummary } from '../api/types'
 import { useProteinName } from '../proteins'
-import { ALLERGEN, SLOT, formatNumber, formatWeekday } from '../labels'
-import { fitLevel } from '../rules'
+import { ALLERGEN, SLOT, formatWeekday } from '../labels'
 import { Button, ErrorBox, LunchboxIcon, Spinner, inputClass } from '../ui'
 
 /** Modal listing the recipes that satisfy a meal's hard constraints. */
@@ -26,7 +25,6 @@ export function RecipePicker({
   const proteinName = useProteinName()
   const [query, setQuery] = useState('')
   const [protein, setProtein] = useState<ProteinType | null>(null)
-  const diners = meal.dinersAtHome + meal.dinersTakeaway
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose()
@@ -69,7 +67,6 @@ export function RecipePicker({
           <p className="mt-1 text-xs text-stone-500">
             Només es mostren plats compatibles amb qui menja
             {meal.dinersTakeaway > 0 ? ' i que aguanten la carmanyola' : ''}.
-            {meal.kcalTarget > 0 && ` Objectiu: ~${formatNumber(meal.kcalTarget)} kcal per a ${diners} persones.`}
           </p>
           <input
             autoFocus
@@ -97,48 +94,35 @@ export function RecipePicker({
             <p className="p-6 text-center text-sm text-stone-500">Cap plat no coincideix amb la cerca.</p>
           )}
           <ul>
-            {shown.map((recipe) => {
-              const fit = meal.kcalTarget > 0 ? (recipe.nutrition.kcal * diners) / meal.kcalTarget : null
-              return (
-                <li key={recipe.id}>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => onPick(recipe)}
-                    className={`flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-brand-50 disabled:opacity-50 ${
-                      meal.recipe?.id === recipe.id ? 'bg-brand-50 ring-1 ring-brand-300' : ''
-                    }`}
-                  >
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-2 font-medium text-stone-900">
-                        {recipe.name}
-                        {recipe.portable && <LunchboxIcon className="size-4 text-terracotta-600" />}
-                      </p>
-                      <p className="truncate text-xs text-stone-500">
-                        {proteinName(recipe.proteinType)} · {recipe.prepMinutes} min
-                        {recipe.allergens.length > 0 &&
-                          ` · conté ${recipe.allergens.map((a) => ALLERGEN[a].toLowerCase()).join(', ')}`}
-                      </p>
-                    </div>
-                    <div className="text-right text-sm">
-                      <p className="tabular-nums">{formatNumber(recipe.nutrition.kcal)} kcal/ració</p>
-                      {fit !== null && <FitText fit={fit} />}
-                    </div>
-                  </button>
-                </li>
-              )
-            })}
+            {shown.map((recipe) => (
+              <li key={recipe.id}>
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => onPick(recipe)}
+                  className={`flex w-full items-center gap-4 rounded-xl px-4 py-3 text-left hover:bg-brand-50 disabled:opacity-50 ${
+                    meal.recipe?.id === recipe.id ? 'bg-brand-50 ring-1 ring-brand-300' : ''
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="flex items-center gap-2 font-medium text-stone-900">
+                      {recipe.name}
+                      {recipe.portable && <LunchboxIcon className="size-4 text-terracotta-600" />}
+                    </p>
+                    <p className="truncate text-xs text-stone-500">
+                      {proteinName(recipe.proteinType)} · {recipe.prepMinutes} min
+                      {recipe.allergens.length > 0 &&
+                        ` · conté ${recipe.allergens.map((a) => ALLERGEN[a].toLowerCase()).join(', ')}`}
+                    </p>
+                  </div>
+                </button>
+              </li>
+            ))}
           </ul>
         </div>
       </div>
     </div>
   )
-}
-
-export function FitText({ fit }: { fit: number }) {
-  const level = fitLevel(fit)
-  const color = level === 'good' ? 'text-avocado-700' : level === 'fair' ? 'text-amber-700' : 'text-terracotta-700'
-  return <p className={`text-xs tabular-nums ${color}`}>{Math.round(fit * 100)} % de l'objectiu</p>
 }
 
 function FilterChip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {

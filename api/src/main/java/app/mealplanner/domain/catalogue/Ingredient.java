@@ -9,7 +9,6 @@ import java.util.Set;
  * A purchasable ingredient.
  *
  * @param packageSize     size of one supermarket package, in the canonical unit
- * @param nutritionPer100 nutrition per 100 g, or per 100 ml for {@link CanonicalUnit#ML} ingredients
  * @param conversions     canonical units per one ingredient-specific unit (1 egg = 60 g)
  * @param pantryStaple    always assumed to be at home (oil, spices); never on the shopping list
  */
@@ -20,7 +19,6 @@ public record Ingredient(
 		CanonicalUnit canonicalUnit,
 		BigDecimal packageSize,
 		Aisle aisle,
-		Nutrition nutritionPer100,
 		Set<Allergen> allergens,
 		Map<Unit, BigDecimal> conversions,
 		boolean pantryStaple) {
@@ -30,7 +28,6 @@ public record Ingredient(
 		Objects.requireNonNull(category, "category");
 		Objects.requireNonNull(canonicalUnit, "canonicalUnit");
 		Objects.requireNonNull(aisle, "aisle");
-		Objects.requireNonNull(nutritionPer100, "nutritionPer100");
 		if (packageSize == null || packageSize.signum() <= 0) {
 			throw new IllegalArgumentException("Package size must be positive for " + name);
 		}

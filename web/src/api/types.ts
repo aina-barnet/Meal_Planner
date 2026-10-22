@@ -1,7 +1,5 @@
 // Mirrors the API's DTOs (see /api/docs).
 
-export type Sex = 'FEMALE' | 'MALE'
-export type ActivityLevel = 'SEDENTARY' | 'LIGHT' | 'MODERATE' | 'ACTIVE' | 'VERY_ACTIVE'
 export type DietType = 'OMNIVORE' | 'PESCATARIAN' | 'VEGETARIAN' | 'VEGAN'
 export type Allergen =
   | 'GLUTEN' | 'CRUSTACEANS' | 'EGGS' | 'FISH' | 'PEANUTS' | 'SOY' | 'MILK'
@@ -36,34 +34,16 @@ export interface AllergenEntry {
   kind: AllergenKind
 }
 
-export interface Requirement {
-  ageYears: number
-  basalKcal: number
-  estimatedDailyKcal: number
-  dailyKcal: number
-  overridden: boolean
-  perMainMealKcal: number
-  equationValidForAge: boolean
-}
-
 export interface MemberInput {
   name: string
-  birthDate: string
-  sex: Sex
-  weightKg: number
-  heightCm: number
-  activityLevel: ActivityLevel
   dietType: DietType
   dietNotes: string | null
-  kcalOverride: number | null
-  mainMealsPct: number
   allergens: AllergenEntry[]
   dislikedIngredientIds: number[]
 }
 
 export interface Member extends MemberInput {
   id: number
-  requirement: Requirement
 }
 
 export interface Ingredient {
@@ -75,10 +55,6 @@ export interface Ingredient {
   aisle: Aisle
   pantryStaple: boolean
   allergens: Allergen[]
-  kcalPer100: number
-  proteinPer100: number
-  carbsPer100: number
-  fatPer100: number
   conversions: Partial<Record<Unit, number>>
   custom: boolean
 }
@@ -89,20 +65,9 @@ export interface IngredientInput {
   canonicalUnit: CanonicalUnit
   packageSize: number
   aisle: Aisle
-  kcalPer100: number
-  proteinPer100: number
-  carbsPer100: number
-  fatPer100: number
   allergens: Allergen[]
   conversions: Partial<Record<Unit, number>>
   pantryStaple: boolean
-}
-
-export interface Nutrition {
-  kcal: number
-  proteinG: number
-  carbsG: number
-  fatG: number
 }
 
 export interface RecipeSummary {
@@ -117,7 +82,6 @@ export interface RecipeSummary {
   seasons: Season[]
   portable: boolean
   lunchboxServing: 'COLD' | 'REHEAT' | null
-  nutrition: Nutrition
   allergens: Allergen[]
   diets: DietType[]
   custom: boolean
@@ -172,9 +136,6 @@ export interface Meal {
   locked: boolean
   emptyReason: string | null
   recipe: RecipeSummary | null
-  kcalTarget: number
-  kcalOffered: number | null
-  kcalFit: number | null
   notes: string[]
 }
 

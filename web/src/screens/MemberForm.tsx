@@ -1,12 +1,11 @@
 import { useMemo, useState } from 'react'
 import { ApiError } from '../api/client'
 import { useIngredients } from '../api/hooks'
-import type { ActivityLevel, Allergen, AllergenKind, DietType, MemberInput, Sex } from '../api/types'
-import { ACTIVITY, ALLERGEN, ALLERGEN_KIND, DIET, SEX } from '../labels'
+import type { Allergen, AllergenKind, DietType, MemberInput } from '../api/types'
+import { ALLERGEN, ALLERGEN_KIND, DIET } from '../labels'
 import { Button, ErrorBox, Field, inputClass } from '../ui'
 
 const ALLERGENS = Object.keys(ALLERGEN) as Allergen[]
-const TODAY = new Date().toISOString().slice(0, 10)
 
 export function MemberForm({
   initial,
@@ -33,7 +32,7 @@ export function MemberForm({
     set('allergens', next ? [...others, { allergen, kind: next }] : others)
   }
 
-  const canSubmit = form.name.trim() !== '' && form.birthDate !== '' && form.weightKg > 0 && form.heightCm > 0
+  const canSubmit = form.name.trim() !== ''
 
   return (
     <form
@@ -43,68 +42,8 @@ export function MemberForm({
         if (canSubmit) onSubmit({ ...form, name: form.name.trim() })
       }}
     >
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Nom" error={fieldError('name')}>
-          <input className={inputClass} value={form.name} autoFocus onChange={(e) => set('name', e.target.value)} />
-        </Field>
-        <Field label="Data de naixement" error={fieldError('birthDate')}>
-          <input
-            type="date"
-            className={inputClass}
-            value={form.birthDate}
-            max={TODAY}
-            onChange={(e) => set('birthDate', e.target.value)}
-          />
-        </Field>
-      </div>
-
-      <div className="grid grid-cols-3 gap-4">
-        <Field label="Sexe" hint="S'utilitza per a l'estimació de calories">
-          <div className="flex gap-2">
-            {(Object.keys(SEX) as Sex[]).map((sex) => (
-              <Choice key={sex} selected={form.sex === sex} onClick={() => set('sex', sex)}>
-                {SEX[sex]}
-              </Choice>
-            ))}
-          </div>
-        </Field>
-        <Field label="Pes (kg)" error={fieldError('weightKg')}>
-          <input
-            type="number"
-            min={2}
-            max={400}
-            step={0.5}
-            className={inputClass}
-            value={form.weightKg || ''}
-            onChange={(e) => set('weightKg', Number(e.target.value))}
-          />
-        </Field>
-        <Field label="Alçada (cm)" error={fieldError('heightCm')}>
-          <input
-            type="number"
-            min={40}
-            max={250}
-            className={inputClass}
-            value={form.heightCm || ''}
-            onChange={(e) => set('heightCm', Number(e.target.value))}
-          />
-        </Field>
-      </div>
-
-      <Field label="Activitat física">
-        <div className="grid grid-cols-5 gap-2">
-          {(Object.keys(ACTIVITY) as ActivityLevel[]).map((level) => (
-            <Choice
-              key={level}
-              selected={form.activityLevel === level}
-              onClick={() => set('activityLevel', level)}
-              className="flex-col items-start text-left"
-            >
-              <span className="font-medium">{ACTIVITY[level].label}</span>
-              <span className="text-xs font-normal opacity-75">{ACTIVITY[level].hint}</span>
-            </Choice>
-          ))}
-        </div>
+      <Field label="Nom" error={fieldError('name')}>
+        <input className={inputClass} value={form.name} autoFocus onChange={(e) => set('name', e.target.value)} />
       </Field>
 
       <div className="grid grid-cols-2 gap-4">

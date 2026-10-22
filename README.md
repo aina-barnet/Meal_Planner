@@ -2,7 +2,7 @@
 
 Plans a family's week of lunches and dinners — including the ones that go to work in a lunchbox — and turns it into an aggregated shopping list, entirely on your own computer.
 
-![Menu board: a generated week with lunchbox badges and kcal fit per meal](docs/menu-board.png)
+![Menu board: a generated week with lunchbox badges](docs/menu-board.png)
 
 ## Start and stop with a double click (Windows)
 
@@ -11,6 +11,8 @@ For people who don't use a terminal.
 - **`Instal·lar.bat`** — run once per computer. Enables WSL 2 / Virtual Machine Platform, installs Docker Desktop with winget, and checks that CPU virtualization is on. Asks for administrator rights and usually a restart.
 - **`Engegar.bat`** — starts Docker Desktop if needed, starts the app and opens it in the browser. The first time takes a few minutes because it builds the app.
 - **`Aturar.bat`** — stops the app. The data is kept for the next time.
+- **`Guardar dades.bat`** — saves all the data to a file in `copies-de-seguretat\`. Copy that file to move the data to another computer. `Engegar.bat` also saves an automatic copy before every start (the last 10 are kept), since a new version of the app may upgrade the database.
+- **`Recuperar dades.bat`** — loads a saved copy, replacing the current data (which is saved first). Drag a `.dump` file onto it, or double-click it to load the most recent copy. Copies from older versions are upgraded on start.
 
 Tip: right-click each file → *Send to* → *Desktop (create shortcut)* to have them on the desktop.
 
@@ -57,7 +59,7 @@ cd web && npm run lint && npm run build
 
 ## What it does
 
-1. **Setup wizard** — the household and its members: diet, allergies and intolerances, dislikes, and an orientative energy estimate (Mifflin-St Jeor × activity) that can always be overridden by hand.
+1. **Setup wizard** — the household and its members: diet, allergies and intolerances, and dislikes.
 2. **Week configuration** — which lunches and dinners to plan and, for each one, who eats at home and who takes a lunchbox.
 3. **Menu board** — a generated, balanced week that can be rearranged by dragging dishes, replaced from a filtered picker, or locked before regenerating. Dishes that do not survive a lunchbox are never placed in a meal with lunchbox diners, and the API rejects such assignments too.
 4. **Shopping list** — scaled, converted and aggregated across the week, minus the pantry, rounded up to whole packages and grouped by aisle, with a print stylesheet. Leftovers of each package go back into the pantry for the following week.
@@ -70,9 +72,9 @@ cd web && npm run lint && npm run build
 /docs  Design notes and decision log
 ```
 
-All domain logic (nutritional requirements, portion scaling, unit conversion, ingredient aggregation, purchase rounding and the menu generator) lives in plain Java classes under `app.mealplanner.domain`, with no Spring or JPA. They take data in and return data out, and are unit-tested without a Spring context or a database; `DomainPurityTest` fails the build if a domain class imports Spring, JPA or the application layers. Controllers, services and repositories (`web`, `application`, `persistence`) are a thin layer that maps HTTP and persistence onto that domain.
+All domain logic (portion scaling, unit conversion, ingredient aggregation, purchase rounding and the menu generator) lives in plain Java classes under `app.mealplanner.domain`, with no Spring or JPA. They take data in and return data out, and are unit-tested without a Spring context or a database; `DomainPurityTest` fails the build if a domain class imports Spring, JPA or the application layers. Controllers, services and repositories (`web`, `application`, `persistence`) are a thin layer that maps HTTP and persistence onto that domain.
 
-The menu generator (`domain.generator.MenuGenerator`) is rules plus scoring: hard constraints filter the catalogue per meal (lunchbox, allergies, diet), survivors are scored on kcal fit, protein rotation, variety and recency, and one of the top five is drawn at random. The scoring is explained at the top of the class.
+The menu generator (`domain.generator.MenuGenerator`) is rules plus scoring: hard constraints filter the catalogue per meal (lunchbox, allergies, diet), survivors are scored on protein rotation, variety and recency, and one of the top five is drawn at random. The scoring is explained at the top of the class.
 
 The API is documented with OpenAPI at `/api/docs`. Errors are RFC 9457 problem details with a machine-readable `code` and, for business rule violations, human-readable `reasons`.
 

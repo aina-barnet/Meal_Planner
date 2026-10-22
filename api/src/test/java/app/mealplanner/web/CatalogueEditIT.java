@@ -26,7 +26,6 @@ class CatalogueEditIT {
 
 	private static final String TOFU = """
 			{"name":"Tofu ferm","category":"LEGUME","canonicalUnit":"G","packageSize":400,"aisle":"DAIRY_EGGS",
-			 "kcalPer100":144,"proteinPer100":15.7,"carbsPer100":2.3,"fatPer100":8.7,
 			 "allergens":["SOY"],"conversions":{"UNIT":200},"pantryStaple":false}""";
 
 	@Autowired
@@ -58,8 +57,6 @@ class CatalogueEditIT {
 
 		assertThat(recipe).hasStatus(201);
 		assertThat(recipe).bodyJson().extractingPath("$.summary.custom").isEqualTo(true);
-		// 2 tofu blocks (400 g × 1.44) + 400 g potato (× 0.77) + 2 tbsp oil (28 g × 8.84) = 576 + 308 + 247.52 → /4
-		assertThat(recipe).bodyJson().extractingPath("$.summary.nutrition.kcal").isEqualTo(283);
 		List<String> allergens = JsonPath.read(body(recipe), "$.summary.allergens");
 		assertThat(allergens).containsExactly("SOY");
 		List<String> diets = JsonPath.read(body(recipe), "$.summary.diets");
@@ -92,14 +89,10 @@ class CatalogueEditIT {
 	void anyRecipeCanBeEditedIncludingSeededOnes() {
 		long risotto = jdbc.queryForObject("SELECT id FROM recipe WHERE code = 'risotto-bolets'", Long.class);
 		String original = body(mvc.get().uri("/api/recipes/" + risotto).exchange());
-		int originalKcal = JsonPath.read(original, "$.summary.nutrition.kcal");
 
-		// Same recipe for 8 instead of 4: half the kcal per serving.
 		MvcTestResult edited = put("/api/recipes/" + risotto, asRequest(original).replace("\"baseServings\":4", "\"baseServings\":8"));
 
-		assertThat(edited).hasStatusOk();
-		int editedKcal = JsonPath.read(body(edited), "$.summary.nutrition.kcal");
-		assertThat(editedKcal).isBetween(originalKcal / 2 - 1, originalKcal / 2 + 1);
+		assertThat(edited).hasStatusOk().bodyJson().extractingPath("$.summary.baseServings").isEqualTo(8);
 		assertThat(put("/api/recipes/" + risotto, asRequest(original))).hasStatusOk();
 	}
 
@@ -129,8 +122,8 @@ class CatalogueEditIT {
 		MvcTestResult broken = put("/api/ingredients/" + tofuId, TOFU.replace("\"conversions\":{\"UNIT\":200}", "\"conversions\":{}"));
 		assertThat(broken).hasStatus(422).bodyJson().extractingPath("$.code").isEqualTo("INGREDIENT_IN_USE");
 
-		assertThat(put("/api/ingredients/" + tofuId, TOFU.replace("144", "150"))).hasStatusOk()
-				.bodyJson().extractingPath("$.kcalPer100").isEqualTo(150.0);
+		assertThat(put("/api/ingredients/" + tofuId, TOFU.replace("Tofu ferm", "Tofu sedós"))).hasStatusOk()
+				.bodyJson().extractingPath("$.name").isEqualTo("Tofu sedós");
 
 		long egg = jdbc.queryForObject("SELECT id FROM ingredient WHERE code = 'egg'", Long.class);
 		assertThat(put("/api/ingredients/" + egg, TOFU.replace("Tofu ferm", "Ous nous"))).hasStatus(409)

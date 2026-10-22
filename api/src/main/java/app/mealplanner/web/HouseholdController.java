@@ -2,7 +2,6 @@ package app.mealplanner.web;
 
 import app.mealplanner.application.HouseholdService;
 import app.mealplanner.application.HouseholdService.MemberData;
-import app.mealplanner.domain.nutrition.MemberProfile;
 import app.mealplanner.persistence.AllergenKind;
 import app.mealplanner.persistence.MemberEntity;
 import app.mealplanner.web.Dtos.AllergenEntry;
@@ -52,7 +51,7 @@ public class HouseholdController {
 	}
 
 	@GetMapping("/members")
-	@Operation(summary = "List members with their orientative energy requirements")
+	@Operation(summary = "List members")
 	public List<MemberResponse> members() {
 		return household.members().stream().map(this::response).toList();
 	}
@@ -80,7 +79,7 @@ public class HouseholdController {
 	}
 
 	private MemberResponse response(MemberEntity member) {
-		return MemberResponse.of(member, household.requirement(member));
+		return MemberResponse.of(member);
 	}
 
 	private static MemberData data(MemberRequest r) {
@@ -91,9 +90,7 @@ public class HouseholdController {
 				allergens.put(entry.allergen(), entry.kind());
 			}
 		}
-		return new MemberData(r.name(), r.birthDate(), r.sex(), r.weightKg(), r.heightCm(), r.activityLevel(),
-				r.dietType(), r.dietNotes(), r.kcalOverride(),
-				r.mainMealsPct() == null ? MemberProfile.DEFAULT_MAIN_MEALS_PCT : r.mainMealsPct(), allergens,
+		return new MemberData(r.name(), r.dietType(), r.dietNotes(), allergens,
 				r.dislikedIngredientIds() == null ? new HashSet<>() : new HashSet<>(r.dislikedIngredientIds()));
 	}
 }

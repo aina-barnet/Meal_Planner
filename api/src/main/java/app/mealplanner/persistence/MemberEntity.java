@@ -2,8 +2,6 @@ package app.mealplanner.persistence;
 
 import app.mealplanner.domain.catalogue.Allergen;
 import app.mealplanner.domain.catalogue.DietType;
-import app.mealplanner.domain.nutrition.ActivityLevel;
-import app.mealplanner.domain.nutrition.Sex;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -19,8 +17,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapKeyColumn;
 import jakarta.persistence.MapKeyEnumerated;
 import jakarta.persistence.Table;
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.EnumMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -40,34 +36,12 @@ public class MemberEntity {
 
 	private String name;
 
-	@Column(name = "birth_date")
-	private LocalDate birthDate;
-
-	@Enumerated(EnumType.STRING)
-	private Sex sex;
-
-	@Column(name = "weight_kg")
-	private BigDecimal weightKg;
-
-	@Column(name = "height_cm")
-	private BigDecimal heightCm;
-
-	@Enumerated(EnumType.STRING)
-	@Column(name = "activity_level")
-	private ActivityLevel activityLevel;
-
 	@Enumerated(EnumType.STRING)
 	@Column(name = "diet_type")
 	private DietType dietType;
 
 	@Column(name = "diet_notes")
 	private String dietNotes;
-
-	@Column(name = "kcal_override")
-	private Integer kcalOverride;
-
-	@Column(name = "main_meals_pct")
-	private int mainMealsPct;
 
 	@ElementCollection(fetch = FetchType.EAGER)
 	@CollectionTable(name = "member_allergen", joinColumns = @JoinColumn(name = "member_id"))
@@ -105,46 +79,6 @@ public class MemberEntity {
 		this.name = name;
 	}
 
-	public LocalDate getBirthDate() {
-		return birthDate;
-	}
-
-	public void setBirthDate(LocalDate birthDate) {
-		this.birthDate = birthDate;
-	}
-
-	public Sex getSex() {
-		return sex;
-	}
-
-	public void setSex(Sex sex) {
-		this.sex = sex;
-	}
-
-	public BigDecimal getWeightKg() {
-		return weightKg;
-	}
-
-	public void setWeightKg(BigDecimal weightKg) {
-		this.weightKg = weightKg;
-	}
-
-	public BigDecimal getHeightCm() {
-		return heightCm;
-	}
-
-	public void setHeightCm(BigDecimal heightCm) {
-		this.heightCm = heightCm;
-	}
-
-	public ActivityLevel getActivityLevel() {
-		return activityLevel;
-	}
-
-	public void setActivityLevel(ActivityLevel activityLevel) {
-		this.activityLevel = activityLevel;
-	}
-
 	public DietType getDietType() {
 		return dietType;
 	}
@@ -159,22 +93,6 @@ public class MemberEntity {
 
 	public void setDietNotes(String dietNotes) {
 		this.dietNotes = dietNotes;
-	}
-
-	public Integer getKcalOverride() {
-		return kcalOverride;
-	}
-
-	public void setKcalOverride(Integer kcalOverride) {
-		this.kcalOverride = kcalOverride;
-	}
-
-	public int getMainMealsPct() {
-		return mainMealsPct;
-	}
-
-	public void setMainMealsPct(int mainMealsPct) {
-		this.mainMealsPct = mainMealsPct;
 	}
 
 	public Map<Allergen, AllergenKind> getAllergens() {

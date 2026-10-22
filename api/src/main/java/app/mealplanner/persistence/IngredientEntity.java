@@ -51,18 +51,6 @@ public class IngredientEntity {
 	@Enumerated(EnumType.STRING)
 	private Aisle aisle;
 
-	@Column(name = "kcal_per_100")
-	private BigDecimal kcalPer100;
-
-	@Column(name = "protein_per_100")
-	private BigDecimal proteinPer100;
-
-	@Column(name = "carbs_per_100")
-	private BigDecimal carbsPer100;
-
-	@Column(name = "fat_per_100")
-	private BigDecimal fatPer100;
-
 	@Column(name = "pantry_staple")
 	private boolean pantryStaple;
 
@@ -138,29 +126,6 @@ public class IngredientEntity {
 
 	public void setAisle(Aisle aisle) {
 		this.aisle = aisle;
-	}
-
-	public BigDecimal getKcalPer100() {
-		return kcalPer100;
-	}
-
-	public BigDecimal getProteinPer100() {
-		return proteinPer100;
-	}
-
-	public BigDecimal getCarbsPer100() {
-		return carbsPer100;
-	}
-
-	public BigDecimal getFatPer100() {
-		return fatPer100;
-	}
-
-	public void setNutritionPer100(BigDecimal kcal, BigDecimal protein, BigDecimal carbs, BigDecimal fat) {
-		this.kcalPer100 = kcal;
-		this.proteinPer100 = protein;
-		this.carbsPer100 = carbs;
-		this.fatPer100 = fat;
 	}
 
 	public boolean isPantryStaple() {

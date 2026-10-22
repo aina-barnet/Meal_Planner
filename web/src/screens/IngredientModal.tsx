@@ -25,10 +25,6 @@ export function IngredientModal({
           canonicalUnit: initial.canonicalUnit,
           packageSize: initial.packageSize,
           aisle: initial.aisle,
-          kcalPer100: initial.kcalPer100,
-          proteinPer100: initial.proteinPer100,
-          carbsPer100: initial.carbsPer100,
-          fatPer100: initial.fatPer100,
           allergens: initial.allergens,
           conversions: initial.conversions,
           pantryStaple: initial.pantryStaple,
@@ -39,10 +35,6 @@ export function IngredientModal({
           canonicalUnit: 'G',
           packageSize: 500,
           aisle: 'PRODUCE',
-          kcalPer100: 0,
-          proteinPer100: 0,
-          carbsPer100: 0,
-          fatPer100: 0,
           allergens: [],
           conversions: {},
           pantryStaple: false,
@@ -59,7 +51,7 @@ export function IngredientModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
-  const number = (key: 'packageSize' | 'kcalPer100' | 'proteinPer100' | 'carbsPer100' | 'fatPer100', label: string, hint?: string) => (
+  const number = (key: 'packageSize', label: string, hint?: string) => (
     <Field label={label} hint={hint}>
       <input
         type="number"
@@ -87,9 +79,6 @@ export function IngredientModal({
       >
         <div className="border-b border-stone-200 px-6 py-4">
           <h2 className="text-lg font-semibold">{initial ? `Edita «${initial.name}»` : 'Nou ingredient'}</h2>
-          <p className="text-xs text-stone-500">
-            Les dades nutricionals són per 100 {base}. Les trobareu a l'etiqueta del paquet.
-          </p>
         </div>
 
         <div className="flex-1 space-y-5 overflow-y-auto px-6 py-5">
@@ -136,13 +125,6 @@ export function IngredientModal({
                 ))}
               </select>
             </Field>
-          </div>
-
-          <div className="grid grid-cols-4 gap-4">
-            {number('kcalPer100', 'kcal')}
-            {number('proteinPer100', 'Proteïnes (g)')}
-            {number('carbsPer100', 'Hidrats (g)')}
-            {number('fatPer100', 'Greixos (g)')}
           </div>
 
           <Field label="Al·lèrgens">

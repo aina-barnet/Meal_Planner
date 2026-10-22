@@ -1,4 +1,4 @@
-import type { Allergen, DietType, Ingredient, IngredientCategory, Nutrition, Unit } from './api/types'
+import type { Allergen, DietType, Ingredient, IngredientCategory, Unit } from './api/types'
 
 /**
  * Client-side mirror of the domain's unit conversion and recipe facts, for the live preview in
@@ -28,23 +28,6 @@ export interface Line {
   ingredient: Ingredient
   quantity: number
   unit: Unit
-}
-
-export function nutritionPerServing(lines: Line[], servings: number): Nutrition {
-  const total = lines.reduce(
-    (sum, { ingredient, quantity, unit }) => {
-      const grams = toCanonical(ingredient, quantity, unit) ?? 0
-      return {
-        kcal: sum.kcal + (grams * ingredient.kcalPer100) / 100,
-        proteinG: sum.proteinG + (grams * ingredient.proteinPer100) / 100,
-        carbsG: sum.carbsG + (grams * ingredient.carbsPer100) / 100,
-        fatG: sum.fatG + (grams * ingredient.fatPer100) / 100,
-      }
-    },
-    { kcal: 0, proteinG: 0, carbsG: 0, fatG: 0 },
-  )
-  const n = Math.max(servings, 1)
-  return { kcal: total.kcal / n, proteinG: total.proteinG / n, carbsG: total.carbsG / n, fatG: total.fatG / n }
 }
 
 export function allergensOf(lines: Line[]): Allergen[] {

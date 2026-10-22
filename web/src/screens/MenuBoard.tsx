@@ -15,12 +15,12 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ApiError } from '../api/client'
 import { useMealActions, useMembers, useWeek } from '../api/hooks'
 import type { Meal, MealSlot, Member, Week } from '../api/types'
-import { SLOT, addDays, formatDayMonth, formatNumber, formatWeekRange, formatWeekday } from '../labels'
+import { SLOT, addDays, formatDayMonth, formatWeekRange, formatWeekday } from '../labels'
 import { navigate } from '../router'
 import { PrintButton } from '../print/PrintButton'
 import { useProteinName } from '../proteins'
 import { confirmReopen } from '../reopen'
-import { fitLevel, swapViolations } from '../rules'
+import { swapViolations } from '../rules'
 import { Button, ErrorBox, HomeIcon, LunchboxIcon, Spinner } from '../ui'
 import { CopyWeekDialog } from './CopyWeekDialog'
 import { RecipePicker } from './RecipePicker'
@@ -439,37 +439,12 @@ function DishCardBody({
           {proteinName(recipe.proteinType)} · {recipe.prepMinutes} min
         </span>
       </p>
-      <div className="mt-auto pt-2">
-        <KcalFit meal={meal} />
-        {meal.notes.length > 0 && (
-          <p className="mt-1 text-[0.6875rem] leading-snug text-amber-700" title={meal.notes.join('\n')}>
-            ⚠ {meal.notes[0]}
-          </p>
-        )}
-      </div>
+      {meal.notes.length > 0 && (
+        <p className="mt-auto pt-2 text-[0.6875rem] leading-snug text-amber-700" title={meal.notes.join('\n')}>
+          ⚠ {meal.notes[0]}
+        </p>
+      )}
       {actions}
-    </div>
-  )
-}
-
-function KcalFit({ meal }: { meal: Meal }) {
-  if (meal.kcalFit === null || meal.kcalTarget === 0) {
-    return <p className="text-[0.6875rem] text-stone-400">{meal.recipe ? `${formatNumber(meal.recipe.nutrition.kcal)} kcal/ració` : ''}</p>
-  }
-  const level = fitLevel(meal.kcalFit)
-  const bar = level === 'good' ? 'bg-avocado-500' : level === 'fair' ? 'bg-amber-500' : 'bg-terracotta-500'
-  const width = Math.min(100, Math.round((meal.kcalFit / 1.5) * 100))
-  return (
-    <div title={`${formatNumber(meal.kcalOffered ?? 0)} kcal per a ${meal.dinersAtHome + meal.dinersTakeaway} · objectiu ${formatNumber(meal.kcalTarget)} kcal`}>
-      <div className="flex flex-wrap justify-between gap-x-1 text-[0.6875rem] text-stone-500">
-        <span className="whitespace-nowrap" title="kcal per ració">{formatNumber(meal.recipe!.nutrition.kcal)} kcal</span>
-        <span className="tabular-nums">{Math.round(meal.kcalFit * 100)} %</span>
-      </div>
-      <div className="relative mt-0.5 h-1.5 overflow-hidden rounded-full bg-stone-200">
-        <div className={`h-full rounded-full ${bar}`} style={{ width: `${width}%` }} />
-        {/* Marker at 100 % of the target */}
-        <div className="absolute inset-y-0 w-px bg-stone-500" style={{ left: `${(1 / 1.5) * 100}%` }} />
-      </div>
     </div>
   )
 }

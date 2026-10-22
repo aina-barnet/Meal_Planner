@@ -5,7 +5,6 @@ import app.mealplanner.domain.catalogue.CanonicalUnit;
 import app.mealplanner.domain.catalogue.Cuisine;
 import app.mealplanner.domain.catalogue.Ingredient;
 import app.mealplanner.domain.catalogue.IngredientCategory;
-import app.mealplanner.domain.catalogue.Nutrition;
 import app.mealplanner.domain.catalogue.ProteinType;
 import app.mealplanner.domain.catalogue.Recipe;
 import app.mealplanner.domain.catalogue.RecipeIngredient;
@@ -21,26 +20,26 @@ import java.util.Set;
 public final class Fixtures {
 
 	public static final Ingredient EGG = new Ingredient(1, "Ous", IngredientCategory.EGG, CanonicalUnit.G,
-			dec("720"), Aisle.DAIRY_EGGS, new Nutrition(143, 12.6, 0.7, 9.5), Set.of(),
+			dec("720"), Aisle.DAIRY_EGGS, Set.of(),
 			Map.of(Unit.UNIT, dec("60")), false);
 
 	public static final Ingredient POTATO = new Ingredient(2, "Patata", IngredientCategory.VEGETABLE,
-			CanonicalUnit.G, dec("2000"), Aisle.PRODUCE, new Nutrition(77, 2, 17, 0.1), Set.of(),
+			CanonicalUnit.G, dec("2000"), Aisle.PRODUCE, Set.of(),
 			Map.of(Unit.UNIT, dec("200")), false);
 
 	public static final Ingredient OLIVE_OIL = new Ingredient(3, "Oli d'oliva", IngredientCategory.OIL,
-			CanonicalUnit.G, dec("920"), Aisle.PANTRY, new Nutrition(884, 0, 0, 100), Set.of(),
+			CanonicalUnit.G, dec("920"), Aisle.PANTRY, Set.of(),
 			Map.of(Unit.TBSP, dec("14")), true);
 
 	public static final Ingredient MILK = new Ingredient(4, "Llet", IngredientCategory.DAIRY, CanonicalUnit.ML,
-			dec("1000"), Aisle.DAIRY_EGGS, new Nutrition(65, 3.3, 4.7, 3.6), Set.of(), Map.of(), false);
+			dec("1000"), Aisle.DAIRY_EGGS, Set.of(), Map.of(), false);
 
 	public static final Ingredient BAY_LEAF = new Ingredient(5, "Llorer", IngredientCategory.SPICE,
-			CanonicalUnit.G, dec("10"), Aisle.SPICES, new Nutrition(313, 7.6, 75, 8.4), Set.of(),
+			CanonicalUnit.G, dec("10"), Aisle.SPICES, Set.of(),
 			Map.of(Unit.UNIT, dec("0.2")), true);
 
 	public static final Ingredient ONION = new Ingredient(6, "Ceba", IngredientCategory.VEGETABLE,
-			CanonicalUnit.G, dec("1000"), Aisle.PRODUCE, new Nutrition(40, 1.1, 9.3, 0.1), Set.of(),
+			CanonicalUnit.G, dec("1000"), Aisle.PRODUCE, Set.of(),
 			Map.of(Unit.UNIT, dec("150")), false);
 
 	private Fixtures() {

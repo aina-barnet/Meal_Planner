@@ -10,7 +10,6 @@ import app.mealplanner.domain.catalogue.DietType;
 import app.mealplanner.domain.catalogue.Ingredient;
 import app.mealplanner.domain.catalogue.IngredientCategory;
 import app.mealplanner.domain.catalogue.LunchboxServing;
-import app.mealplanner.domain.catalogue.Nutrition;
 import app.mealplanner.domain.catalogue.ProteinType;
 import app.mealplanner.domain.catalogue.Recipe;
 import app.mealplanner.domain.catalogue.RecipeIngredient;
@@ -38,7 +37,6 @@ class MenuGeneratorTest {
 
 	private static final LocalDate MONDAY = LocalDate.of(2026, 10, 12);
 
-	// "Calorie carrier": 100 g = 100 kcal, so a recipe's kcal per serving is easy to set.
 	private static final Ingredient BASE = ingredient(1, "Base", IngredientCategory.GRAIN, Set.of());
 	private static final Ingredient FISH = ingredient(2, "Peix", IngredientCategory.FISH, Set.of(Allergen.FISH));
 	private static final Ingredient CHICKEN = ingredient(3, "Pollastre", IngredientCategory.MEAT, Set.of());
@@ -52,7 +50,7 @@ class MenuGeneratorTest {
 	@Test
 	void neverProposesANonPortableDishForALunchboxMeal() {
 		List<Recipe> catalogue = mixedCatalogue();
-		List<Slot> week = fullWeek(List.of(ANNA_HOME, PAU_LUNCHBOX), List.of(ANNA_HOME, PAU_HOME), 1200);
+		List<Slot> week = fullWeek(List.of(ANNA_HOME, PAU_LUNCHBOX), List.of(ANNA_HOME, PAU_HOME));
 
 		for (int seed = 0; seed < 50; seed++) {
 			for (Result result : new MenuGenerator(catalogue, new Random(seed)).generate(week, List.of())) {
@@ -73,7 +71,7 @@ class MenuGeneratorTest {
 	void respectsAllergiesAndDiets() {
 		Diner allergicToFish = diner(3, "Laia", DinerLocation.HOME, DietType.OMNIVORE, Set.of(Allergen.FISH));
 		Diner vegetarian = diner(4, "Joan", DinerLocation.HOME, DietType.VEGETARIAN, Set.of());
-		List<Slot> week = fullWeek(List.of(allergicToFish, vegetarian), List.of(allergicToFish, vegetarian), 1000);
+		List<Slot> week = fullWeek(List.of(allergicToFish, vegetarian), List.of(allergicToFish, vegetarian));
 
 		List<Result> results = new MenuGenerator(mixedCatalogue(), new Random(7)).generate(week, List.of());
 
@@ -87,11 +85,11 @@ class MenuGeneratorTest {
 	void leavesTheSlotEmptyAndExplainsWhenNothingFits() {
 		Diner vegan = diner(5, "Marta", DinerLocation.TAKEAWAY, DietType.VEGAN, Set.of());
 		List<Recipe> catalogue = List.of(
-				recipe(10, "Peix al forn", ProteinType.FISH, false, 500, FISH),
-				recipe(11, "Truita", ProteinType.EGGS, true, 500, EGG));
+				recipe(10, "Peix al forn", ProteinType.FISH, false, FISH),
+				recipe(11, "Truita", ProteinType.EGGS, true, EGG));
 
 		List<Result> results = new MenuGenerator(catalogue, new Random(1))
-				.generate(List.of(slot(1, MONDAY, 0, List.of(vegan), 600)), List.of());
+				.generate(List.of(slot(1, MONDAY, 0, List.of(vegan))), List.of());
 
 		assertThat(results).singleElement().isInstanceOf(Result.Empty.class);
 		Map<AssignmentViolation, Long> reasons = ((Result.Empty) results.getFirst()).eliminatedBy();
@@ -103,9 +101,9 @@ class MenuGeneratorTest {
 	void keepsLockedMealsAndVariesAroundThem() {
 		List<Recipe> catalogue = mixedCatalogue();
 		Recipe locked = catalogue.getFirst();
-		List<Slot> week = new ArrayList<>(fullWeek(List.of(ANNA_HOME), List.of(ANNA_HOME), 600));
+		List<Slot> week = new ArrayList<>(fullWeek(List.of(ANNA_HOME), List.of(ANNA_HOME)));
 		Slot wednesdayLunch = week.get(4);
-		week.set(4, new Slot(wednesdayLunch.mealId(), wednesdayLunch.date(), 0, wednesdayLunch.diners(), 600, locked));
+		week.set(4, new Slot(wednesdayLunch.mealId(), wednesdayLunch.date(), 0, wednesdayLunch.diners(), locked));
 
 		List<Result> results = new MenuGenerator(catalogue, new Random(3)).generate(week, List.of());
 
@@ -119,7 +117,7 @@ class MenuGeneratorTest {
 
 	@Test
 	void doesNotRepeatADishInTheSameWeekWhenTheCatalogueAllows() {
-		List<Slot> week = fullWeek(List.of(ANNA_HOME, PAU_HOME), List.of(ANNA_HOME, PAU_HOME), 1200);
+		List<Slot> week = fullWeek(List.of(ANNA_HOME, PAU_HOME), List.of(ANNA_HOME, PAU_HOME));
 
 		for (int seed = 0; seed < 20; seed++) {
 			List<Result> results = new MenuGenerator(mixedCatalogue(), new Random(seed)).generate(week, List.of());
@@ -131,7 +129,7 @@ class MenuGeneratorTest {
 
 	@Test
 	void rotatesProteinsBetweenConsecutiveMeals() {
-		List<Slot> week = fullWeek(List.of(ANNA_HOME), List.of(ANNA_HOME), 600);
+		List<Slot> week = fullWeek(List.of(ANNA_HOME), List.of(ANNA_HOME));
 		int transitions = 0;
 		int repeats = 0;
 
@@ -152,21 +150,11 @@ class MenuGeneratorTest {
 	}
 
 	@Test
-	void scoresKcalFitHighestForAnExactMatch() {
-		MenuGenerator generator = new MenuGenerator(mixedCatalogue(), new Random(0));
-		Slot slot = slot(1, MONDAY, 0, List.of(ANNA_HOME, PAU_HOME), 1200);
-
-		assertThat(generator.kcalFit(recipe(90, "Exacte", ProteinType.EGGS, true, 600, EGG), slot)).isEqualTo(1.0);
-		assertThat(generator.kcalFit(recipe(91, "Curt", ProteinType.EGGS, true, 450, EGG), slot)).isCloseTo(0.5, offset());
-		assertThat(generator.kcalFit(recipe(92, "Molt curt", ProteinType.EGGS, true, 200, EGG), slot)).isZero();
-	}
-
-	@Test
 	void prefersDishesNotPlannedRecently() {
 		List<Recipe> catalogue = mixedCatalogue();
 		Recipe recent = catalogue.getFirst();
 		MenuGenerator generator = new MenuGenerator(catalogue, new Random(0));
-		Slot slot = slot(1, MONDAY, 0, List.of(ANNA_HOME), 600);
+		Slot slot = slot(1, MONDAY, 0, List.of(ANNA_HOME));
 
 		var week = new MenuGenerator.Week(List.of(new PastUse(recent.id(), MONDAY.minusDays(7))));
 		assertThat(generator.recency(recent, slot, week)).isCloseTo(0.25, offset());
@@ -175,23 +163,23 @@ class MenuGeneratorTest {
 
 	@Test
 	void penalisesDislikesWithoutExcludingTheDish() {
-		Recipe chicken = recipe(20, "Pollastre", ProteinType.POULTRY, true, 600, CHICKEN);
+		Recipe chicken = recipe(20, "Pollastre", ProteinType.POULTRY, true, CHICKEN);
 		Diner dislikesChicken = new Diner(9, "Nil", DinerLocation.HOME, DietType.OMNIVORE, Set.of(), Set.of(CHICKEN.id()));
 		MenuGenerator generator = new MenuGenerator(List.of(chicken), new Random(0));
 		var week = new MenuGenerator.Week(List.of());
 
-		double liked = generator.score(chicken, slot(1, MONDAY, 0, List.of(ANNA_HOME), 600), week);
-		double disliked = generator.score(chicken, slot(1, MONDAY, 0, List.of(dislikesChicken), 600), week);
+		double liked = generator.score(chicken, slot(1, MONDAY, 0, List.of(ANNA_HOME)), week);
+		double disliked = generator.score(chicken, slot(1, MONDAY, 0, List.of(dislikesChicken)), week);
 
 		assertThat(liked - disliked).isCloseTo(MenuGenerator.DISLIKE_PENALTY, offset());
 		assertThat(new MenuGenerator(List.of(chicken), new Random(0))
-				.generate(List.of(slot(1, MONDAY, 0, List.of(dislikesChicken), 600)), List.of()))
+				.generate(List.of(slot(1, MONDAY, 0, List.of(dislikesChicken))), List.of()))
 				.singleElement().isInstanceOf(Result.Assigned.class);
 	}
 
 	@Test
 	void sameSeedSameWeekDifferentSeedsDifferentWeeks() {
-		List<Slot> week = fullWeek(List.of(ANNA_HOME, PAU_HOME), List.of(ANNA_HOME, PAU_HOME), 1200);
+		List<Slot> week = fullWeek(List.of(ANNA_HOME, PAU_HOME), List.of(ANNA_HOME, PAU_HOME));
 		List<Recipe> catalogue = mixedCatalogue();
 
 		assertThat(dishes(new MenuGenerator(catalogue, new Random(42)).generate(week, List.of())))
@@ -205,29 +193,29 @@ class MenuGeneratorTest {
 
 	// ------------------------------------------------------------------ fixtures
 
-	/** 24 recipes over four proteins, half portable, kcal per serving between 450 and 750. */
+	/** 24 recipes over four proteins, half portable. */
 	private static List<Recipe> mixedCatalogue() {
 		List<Recipe> recipes = new ArrayList<>();
 		Ingredient[] proteins = {FISH, CHICKEN, EGG, LENTIL};
 		ProteinType[] types = {ProteinType.FISH, ProteinType.POULTRY, ProteinType.EGGS, ProteinType.LEGUMES};
 		for (int i = 0; i < 24; i++) {
 			int p = i % 4;
-			recipes.add(recipe(100 + i, "Plat " + i, types[p], i % 2 == 0 || p >= 2, 450 + (i * 37) % 300, proteins[p]));
+			recipes.add(recipe(100 + i, "Plat " + i, types[p], i % 2 == 0 || p >= 2, proteins[p]));
 		}
 		return recipes;
 	}
 
-	private static List<Slot> fullWeek(List<Diner> lunchDiners, List<Diner> dinnerDiners, int target) {
+	private static List<Slot> fullWeek(List<Diner> lunchDiners, List<Diner> dinnerDiners) {
 		List<Slot> slots = new ArrayList<>();
 		for (int day = 0; day < 7; day++) {
-			slots.add(slot(day * 2L + 1, MONDAY.plusDays(day), 0, lunchDiners, target));
-			slots.add(slot(day * 2L + 2, MONDAY.plusDays(day), 1, dinnerDiners, target));
+			slots.add(slot(day * 2L + 1, MONDAY.plusDays(day), 0, lunchDiners));
+			slots.add(slot(day * 2L + 2, MONDAY.plusDays(day), 1, dinnerDiners));
 		}
 		return slots;
 	}
 
-	private static Slot slot(long id, LocalDate date, int order, List<Diner> diners, int target) {
-		return new Slot(id, date, order, diners, target, null);
+	private static Slot slot(long id, LocalDate date, int order, List<Diner> diners) {
+		return new Slot(id, date, order, diners, null);
 	}
 
 	private static Diner diner(long id, String name, DinerLocation location, DietType diet, Set<Allergen> allergens) {
@@ -236,14 +224,14 @@ class MenuGeneratorTest {
 
 	private static Ingredient ingredient(long id, String name, IngredientCategory category, Set<Allergen> allergens) {
 		return new Ingredient(id, name, category, CanonicalUnit.G, BigDecimal.valueOf(1000), Aisle.PANTRY,
-				new Nutrition(100, 10, 10, 1), allergens, Map.of(), false);
+				allergens, Map.of(), false);
 	}
 
-	/** A recipe for 1 serving whose kcal per serving is {@code kcal} (protein carries the kcal). */
-	private static Recipe recipe(long id, String name, ProteinType type, boolean portable, int kcal, Ingredient protein) {
+	/** A recipe for 1 serving with its protein as the only ingredient. */
+	private static Recipe recipe(long id, String name, ProteinType type, boolean portable, Ingredient protein) {
 		return new Recipe(id, name, 1, 30, type, Cuisine.values()[(int) (id % Cuisine.values().length)],
 				Set.of(Season.AUTUMN), portable, portable ? LunchboxServing.REHEAT : null,
-				List.of(new RecipeIngredient(protein, BigDecimal.valueOf(kcal), Unit.G, ScalingMode.LINEAR)));
+				List.of(new RecipeIngredient(protein, BigDecimal.valueOf(150), Unit.G, ScalingMode.LINEAR)));
 	}
 
 	private static List<Long> dishes(List<Result> results) {

@@ -166,9 +166,9 @@ export function useMealActions(weekId: number) {
               ...previous,
               meals: previous.meals.map((m) =>
                 m.id === mealIdA
-                  ? { ...m, recipe: b.recipe, locked: b.locked, emptyReason: null, kcalFit: null, notes: [] }
+                  ? { ...m, recipe: b.recipe, locked: b.locked, emptyReason: null, notes: [] }
                   : m.id === mealIdB
-                    ? { ...m, recipe: a.recipe, locked: a.locked, emptyReason: null, kcalFit: null, notes: [] }
+                    ? { ...m, recipe: a.recipe, locked: a.locked, emptyReason: null, notes: [] }
                     : m,
               ),
             })

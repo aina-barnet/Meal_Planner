@@ -9,8 +9,8 @@ import type {
   Season,
   Unit,
 } from '../api/types'
-import { type Line, allergensOf, dietsOf, nutritionPerServing, supportedUnits } from '../catalogue'
-import { ALLERGEN, CUISINE, DIET, SCALING, SEASON, UNIT, formatNumber } from '../labels'
+import { type Line, allergensOf, dietsOf, supportedUnits } from '../catalogue'
+import { ALLERGEN, CUISINE, DIET, SCALING, SEASON, UNIT } from '../labels'
 import { navigate } from '../router'
 import { Button, Card, ErrorBox, Field, LunchboxIcon, Spinner, inputClass } from '../ui'
 import { IngredientModal } from './IngredientModal'
@@ -107,7 +107,6 @@ function Editor({ recipeId, detail, ingredients }: { recipeId: number | null; de
     const quantity = Number(l.quantity)
     return ingredient && quantity > 0 ? [{ ingredient, quantity, unit: l.unit }] : []
   })
-  const nutrition = nutritionPerServing(previewLines, draft.baseServings)
   const allergens = allergensOf(previewLines)
   const diets = dietsOf(previewLines)
 
@@ -310,16 +309,8 @@ function Editor({ recipeId, detail, ingredients }: { recipeId: number | null; de
 
         <aside className="sticky top-4 space-y-4">
           <Card className="space-y-3">
-            <h2 className="font-semibold">Per ració</h2>
-            <p className="text-3xl font-semibold tabular-nums">
-              {formatNumber(Math.round(nutrition.kcal))} <span className="text-base font-normal text-stone-500">kcal</span>
-            </p>
-            <dl className="grid grid-cols-3 gap-2 text-center text-xs">
-              <Macro label="Proteïnes" value={nutrition.proteinG} />
-              <Macro label="Hidrats" value={nutrition.carbsG} />
-              <Macro label="Greixos" value={nutrition.fatG} />
-            </dl>
-            <div className="border-t border-stone-100 pt-3 text-sm">
+            <h2 className="font-semibold">Resum</h2>
+            <div className="text-sm">
               <p className="text-xs font-medium text-stone-500">Apte per a</p>
               <p>{diets.length > 0 ? diets.map((d) => DIET[d].toLowerCase()).join(', ') : '—'}</p>
             </div>
@@ -438,15 +429,6 @@ function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; c
       }`}>
       {children}
     </button>
-  )
-}
-
-function Macro({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg bg-stone-50 py-2">
-      <dd className="font-semibold tabular-nums text-stone-800">{Math.round(value)} g</dd>
-      <dt className="text-stone-500">{label}</dt>
-    </div>
   )
 }
 

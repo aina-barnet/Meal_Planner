@@ -13,7 +13,6 @@ import app.mealplanner.domain.catalogue.DietType;
 import app.mealplanner.domain.catalogue.Ingredient;
 import app.mealplanner.domain.catalogue.IngredientCategory;
 import app.mealplanner.domain.catalogue.LunchboxServing;
-import app.mealplanner.domain.catalogue.Nutrition;
 import app.mealplanner.domain.catalogue.ProteinType;
 import app.mealplanner.domain.catalogue.Recipe;
 import app.mealplanner.domain.catalogue.RecipeFacts;
@@ -29,10 +28,10 @@ import org.junit.jupiter.api.Test;
 class MealAssignmentRulesTest {
 
 	private static final Ingredient EGG_WITH_ALLERGEN = new Ingredient(1, "Ous", IngredientCategory.EGG,
-			CanonicalUnit.G, dec("720"), Aisle.DAIRY_EGGS, new Nutrition(143, 12.6, 0.7, 9.5), Set.of(Allergen.EGGS),
+			CanonicalUnit.G, dec("720"), Aisle.DAIRY_EGGS, Set.of(Allergen.EGGS),
 			Map.of(Unit.UNIT, dec("60")), false);
 	private static final Ingredient HAKE = new Ingredient(7, "Lluç", IngredientCategory.FISH, CanonicalUnit.G,
-			dec("500"), Aisle.FISHMONGER, new Nutrition(89, 17.8, 0, 1.9), Set.of(Allergen.FISH), Map.of(), false);
+			dec("500"), Aisle.FISHMONGER, Set.of(Allergen.FISH), Map.of(), false);
 
 	private final Recipe truita = recipe("Truita", true, EGG_WITH_ALLERGEN, POTATO);
 	private final Recipe hake = recipe("Lluç al forn", false, HAKE, POTATO);
@@ -87,12 +86,6 @@ class MealAssignmentRulesTest {
 		assertThat(RecipeFacts.compatibleDiets(hake))
 				.containsExactlyInAnyOrder(DietType.OMNIVORE, DietType.PESCATARIAN);
 		assertThat(DietType.VEGAN.allows(EGG.category())).isFalse();
-	}
-
-	@Test
-	void kcalFitComparesWhatDinersGetWithTheTarget() {
-		assertThat(MealKcalTarget.fit(1500, 500, 3)).hasValue(1.0);
-		assertThat(MealKcalTarget.fit(0, 500, 3)).isEmpty();
 	}
 
 	private static Diner diner(String name, DinerLocation location) {
