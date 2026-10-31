@@ -2,6 +2,14 @@
 
 Plans a family's weekday lunches and dinners, Monday to Friday — including the ones that go to work in a lunchbox — entirely on your own computer.
 
+## Highlights
+
+- Domain logic in plain Java with no Spring or JPA; `DomainPurityTest` fails the build if a domain class imports them.
+- Domain unit tests run without Spring or a database; integration tests run against PostgreSQL in Testcontainers.
+- Schema managed by Flyway migrations; the REST API is documented with OpenAPI at `/api/docs`.
+- Errors are RFC 9457 problem details with a machine-readable `code`.
+- Decisions and their reasons are recorded in [docs/decisions.md](docs/decisions.md).
+
 ![Menu board: a generated week with lunchbox badges](docs/menu-board.png)
 
 ## Start and stop with a double click (Windows)
