@@ -1,5 +1,7 @@
 # Planificador d'àpats — Weekly Family Meal Planner
 
+[![CI](https://github.com/aina-barnet/Meal_Planner/actions/workflows/ci.yml/badge.svg)](https://github.com/aina-barnet/Meal_Planner/actions/workflows/ci.yml)
+
 Plans a family's weekday lunches and dinners, Monday to Friday — including the ones that go to work in a lunchbox — entirely on your own computer.
 
 ## Highlights
